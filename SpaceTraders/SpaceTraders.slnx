@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path=".net.csproj" />
+  <Project Path="Spacetraders.Client/Spacetraders.Client.csproj" />
+  <Project Path="SpaceTraders.Core/SpaceTraders.Core.csproj" />
+  <Project Path="SpaceTraders.Specs/SpaceTraders.Specs.csproj" />
+  <Project Path="SpaceTraders.UI/SpaceTraders.UI.csproj" />
+</Solution>
