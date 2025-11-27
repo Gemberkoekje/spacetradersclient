@@ -955,7 +955,7 @@ namespace SpaceTraders.Client
         /// <param name="traits">Filter waypoints by one or more traits.</param>
         /// <returns>Successfully listed waypoints.</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<Response10> GetSystemWaypointsAsync(int? page, int? limit, WaypointType? type, Traits traits, string systemSymbol)
+        public virtual System.Threading.Tasks.Task<Response10> GetSystemWaypointsAsync(int? page, int? limit, WaypointType? type, WaypointTraitSymbol? traits, string systemSymbol)
         {
             return GetSystemWaypointsAsync(page, limit, type, traits, systemSymbol, System.Threading.CancellationToken.None);
         }
@@ -975,7 +975,7 @@ namespace SpaceTraders.Client
         /// <param name="traits">Filter waypoints by one or more traits.</param>
         /// <returns>Successfully listed waypoints.</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<Response10> GetSystemWaypointsAsync(int? page, int? limit, WaypointType? type, Traits traits, string systemSymbol, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<Response10> GetSystemWaypointsAsync(int? page, int? limit, WaypointType? type, WaypointTraitSymbol? traits, string systemSymbol, System.Threading.CancellationToken cancellationToken)
         {
             if (systemSymbol == null)
                 throw new System.ArgumentNullException("systemSymbol");

@@ -1,7 +1,9 @@
 ﻿using Qowaiv.Validation.Abstractions;
 using SpaceTraders.Core.Extensions;
+using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.ContractModels;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,9 +14,13 @@ public sealed class ContractService(Client.SpaceTradersService service)
 {
     public async Task<Contract[]> GetMyContracts()
     {
-        var response = await service.EnqueueCachedAsync((client, ct) => client.GetContractsAsync(null, null, ct), "GetContractsAsync", TimeSpan.FromSeconds(10));
-        var contracts = response.Value.Data;
-        var result = contracts.Select(contract => MapContract(contract)).ToArray();
+        var clientContracts = await service.GetAllPagesAsync(
+            (client, page, limit, ct) => client.GetContractsAsync(page, limit, ct),
+            page => page.Data,
+            "GetContractsAsync",
+            TimeSpan.FromSeconds(10));
+
+        var result = clientContracts.Value.Select(MapContract).ToArray();
         return result;
     }
 

@@ -29,6 +29,7 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<SystemService>();
         services.AddSingleton<SpaceTradersService>();
         services.AddSingleton<ContractService>();
+        services.AddSingleton<WaypointService>();
         services.AddTransient<AgentWindow>();
         services.AddTransient<ContractWindow>();
         services.AddTransient<NavigationWindow>();
@@ -38,6 +39,7 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<SystemDataWindow>();
         services.AddTransient<SystemMapWindow>();
         services.AddTransient<WarningWindow>();
+        services.AddTransient<WaypointWindow>();
     })
     .Build();
 

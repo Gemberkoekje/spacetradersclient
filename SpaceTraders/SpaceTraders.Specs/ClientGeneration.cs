@@ -55,6 +55,7 @@ public sealed class ClientGeneration
 
         // Post-process: ensure JSON POSTs without a body send an empty object `{}` instead of an empty string.
         code = FixEmptyJsonBodiesInGeneratedCode(code);
+        code = FixTraitsInGeneratedCode(code);
 
         var solutionRoot = FindSolutionRoot();
         Assert.That(solutionRoot, Is.Not.Null, "Solution root could not be located.");
@@ -195,6 +196,15 @@ public sealed class ClientGeneration
             "new System.Net.Http.StringContent(string.Empty)",
             "new System.Net.Http.StringContent(\"{}\")");
 
+        return code;
+    }
+
+    private static string FixTraitsInGeneratedCode(string code)
+    {
+        // Fix generated code that uses 'new Client.Traits()' instead of 'new Traits()'
+        code = code.Replace(
+            "Traits traits",
+            "WaypointTraitSymbol? traits");
         return code;
     }
 }

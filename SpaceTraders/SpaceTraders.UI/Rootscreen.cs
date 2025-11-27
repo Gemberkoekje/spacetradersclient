@@ -100,6 +100,11 @@ public class RootScreen : ScreenObject, IDisposable
         {
             dataWindow.LoadData(data);
         }
+        if (window is ICanLoadData<Ship[]> shipWindow)
+        {
+            var shipService = ServiceProvider.GetRequiredService<ShipService>();
+            shipWindow.LoadData(shipService.GetMyShips().GetAwaiter().GetResult());
+        }
         _rootWindow.Children.Add(window);
         _windows.Add(window);
         window.Show();

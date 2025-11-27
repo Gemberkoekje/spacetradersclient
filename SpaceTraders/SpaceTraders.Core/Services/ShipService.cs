@@ -1,4 +1,5 @@
 using SpaceTraders.Core.Extensions;
+using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.ShipModels;
 using System;
 using System.Linq;
@@ -19,15 +20,12 @@ public sealed class ShipService(Client.SpaceTradersService service)
 
     public async Task<Ship[]> GetMyShips()
     {
-        var response = await service.EnqueueCachedAsync((client, ct) => client.GetMyShipsAsync(null, null, ct), "GetMyShipsAsync", TimeSpan.FromSeconds(1));
-        var ships = response.Value.Data.ToList();
-        var result = new Ship[ships.Count];
-        for (var i = 0; i < ships.Count; i++)
-        {
-            var ship = ships[i];
-            result[i] = MapShip(ship);
-        }
-        return result;
+        var ships = await service.GetAllPagesAsync(
+            (client, page, limit, ct) => client.GetMyShipsAsync(page, limit, ct),
+            page => page.Data,
+            "GetMyShipsAsync",
+            TimeSpan.FromSeconds(1));
+        return [.. ships.Value.Select(MapShip)];
     }
     /// <summary>
     /// Retrieves a ship by symbol and maps the client response into a domain <see cref="Ship"/> instance.

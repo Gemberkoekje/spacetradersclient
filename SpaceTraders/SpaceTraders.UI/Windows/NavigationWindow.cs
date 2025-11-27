@@ -31,7 +31,7 @@ internal sealed class NavigationWindow : ClosableWindow, ICanLoadData<Navigation
             return;
         var y = 2;
         Controls.AddLabel($"System:", 2, y);
-        Controls.AddButton($"{Navigation.SystemSymbol}", 10, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow, SystemWaypoint>(SystemService.GetSystem(Navigation.SystemSymbol)));
+        Controls.AddAsyncButton($"{Navigation.SystemSymbol}", 10, y++, async () => RootScreen.ShowWindow<SystemDataWindow, SystemWaypoint>(await SystemService.GetSystemAsync(Navigation.SystemSymbol)), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
         Controls.AddLabel($"Waypoint: {Navigation.WaypointSymbol}", 2, y++);
         Controls.AddLabel($"Destination: {Navigation.Route.Destination.Symbol}", 2, y++);
         Controls.AddLabel($"Destination: {Navigation.Route.Destination.SystemSymbol}", 2, y++);

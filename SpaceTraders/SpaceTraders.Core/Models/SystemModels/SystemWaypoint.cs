@@ -11,8 +11,8 @@ public sealed record SystemWaypoint
     required public SystemType SystemType { get; init; }
     required public int X { get; init; }
     required public int Y { get; init; }
-    required public IList<Waypoint> Waypoints { get; init; }
-    required public IList<FactionSymbol> Factions { get; init; }
+    required public IEnumerable<Waypoint> Waypoints { get; init; }
+    required public IEnumerable<FactionSymbol> Factions { get; init; }
     required public string Name { get; init; }
 
 }
