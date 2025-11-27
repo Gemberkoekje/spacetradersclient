@@ -435,6 +435,7 @@
         "type": "Project",
         "dependencies": {
           "Newtonsoft.Json": "[13.0.4, )",
+          "Qowaiv.Validation.Abstractions": "[1.0.0, )",
           "System.Threading.RateLimiting": "[10.0.0, )"
         }
       },
@@ -443,7 +444,7 @@
         "dependencies": {
           "Qowaiv": "[7.4.5, )",
           "Qowaiv.Validation.Abstractions": "[1.0.0, )",
-          "SpaceTraders.Client": "[1.0.0, )"
+          "Spacetraders.Client": "[1.0.0, )"
         }
       },
       "Newtonsoft.Json": {

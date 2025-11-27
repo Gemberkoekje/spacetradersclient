@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Qowaiv.Validation.Abstractions;
+using System;
 using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.RateLimiting;
@@ -21,7 +23,7 @@ public sealed class SpaceTradersService(
         void TryCancel(CancellationToken ct);
     }
 
-    private sealed class WorkItem<T>(Func<SpaceTradersClient, CancellationToken, Task<T>> op, TaskCompletionSource<T> tcs) : IWorkItem
+    private sealed class WorkItem<T>(Func<SpaceTradersClient, CancellationToken, Task<T>> op, TaskCompletionSource<Result<T>> tcs) : IWorkItem
     {
         public async ValueTask ExecuteAsync(SpaceTradersClient client, CancellationToken ct)
         {
@@ -33,6 +35,17 @@ public sealed class SpaceTradersService(
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 tcs.TrySetCanceled(ct);
+            }
+            catch (ApiException ex)
+            {
+                var response = ex.Response;
+                var error = JsonSerializer.Deserialize<ErrorResponse>(response);
+                if(error is null || error.error is null)
+                {
+                    tcs.TrySetException(new InvalidOperationException("Failed to deserialize error response.", ex));
+                    return;
+                }
+                tcs.TrySetResult(Result.WithMessages<T>(ValidationMessage.Error(error.error.message)));
             }
             catch (Exception ex)
             {
@@ -96,7 +109,7 @@ public sealed class SpaceTradersService(
 
     private readonly ConcurrentDictionary<string, CacheItem> _cache = new();
 
-    public Task<T> EnqueueAsync<T>(
+    public Task<Result<T>> EnqueueAsync<T>(
         Func<SpaceTradersClient, CancellationToken, Task<T>> operation,
         bool priority = false,
         CancellationToken cancellationToken = default)
@@ -104,7 +117,7 @@ public sealed class SpaceTradersService(
         if (operation is null) throw new ArgumentNullException(nameof(operation));
         EnsureStarted();
 
-        var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tcs = new TaskCompletionSource<Result<T>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var item = new WorkItem<T>(operation, tcs);
 
         var writer = priority ? _priorityQueue.Writer : _queue.Writer;
@@ -119,7 +132,7 @@ public sealed class SpaceTradersService(
     }
 
     // Cached variant: returns cached result by cacheKey until ttl expires.
-    public Task<T> EnqueueCachedAsync<T>(
+    public Task<Result<T>> EnqueueCachedAsync<T>(
         Func<SpaceTradersClient, CancellationToken, Task<T>> operation,
         string cacheKey,
         TimeSpan ttl,
@@ -135,7 +148,7 @@ public sealed class SpaceTradersService(
         {
             if (!item.IsExpired && item.Type == typeof(T))
             {
-                return Task.FromResult((T)item.Value);
+                return Task.FromResult((Result<T>)item.Value);
             }
             else
             {
@@ -153,28 +166,6 @@ public sealed class SpaceTradersService(
             }
         }, TaskScheduler.Default);
         return task;
-    }
-
-    public Task EnqueueAsync(
-        Func<SpaceTradersClient, CancellationToken, Task> operation,
-        bool priority = false,
-        CancellationToken cancellationToken = default)
-    {
-        if (operation is null) throw new ArgumentNullException(nameof(operation));
-        EnsureStarted();
-
-        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var item = new WorkItem(operation, tcs);
-
-        var writer = priority ? _priorityQueue.Writer : _queue.Writer;
-        _ = writer.WriteAsync(item, cancellationToken);
-
-        if (cancellationToken.CanBeCanceled)
-        {
-            cancellationToken.Register(() => item.TryCancel(cancellationToken));
-        }
-
-        return tcs.Task;
     }
 
     private void EnsureStarted()

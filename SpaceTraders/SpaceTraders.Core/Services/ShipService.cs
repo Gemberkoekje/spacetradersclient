@@ -20,7 +20,7 @@ public sealed class ShipService(Client.SpaceTradersService service)
     public async Task<Ship[]> GetMyShips()
     {
         var response = await service.EnqueueCachedAsync((client, ct) => client.GetMyShipsAsync(null, null, ct), "GetMyShipsAsync", TimeSpan.FromSeconds(1));
-        var ships = response.Data.ToList();
+        var ships = response.Value.Data.ToList();
         var result = new Ship[ships.Count];
         for (var i = 0; i < ships.Count; i++)
         {
@@ -38,7 +38,7 @@ public sealed class ShipService(Client.SpaceTradersService service)
     public async Task<Ship> GetShip(string symbol)
     {
         var ship = await service.EnqueueCachedAsync((client, ct) => client.GetMyShipAsync(symbol, ct), $"GetMyShipAsync_{symbol}", TimeSpan.FromSeconds(10));
-        return MapShip(ship.Data);
+        return MapShip(ship.Value.Data);
     }
 
     private static Ship MapShip(Client.Ship ship)

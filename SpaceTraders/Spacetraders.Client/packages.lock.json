@@ -50,6 +50,12 @@
         "resolved": "2.0.6",
         "contentHash": "uNtEBAOmaqh6ghml5BGXG8HW09kX4Boih93mYrfWp76sw5zB9z395Ogr/lHlEZTTJBxzVQglHUno+4/YDWjSJQ=="
       },
+      "Qowaiv.Validation.Abstractions": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "tgczqZ9H793awCUncyel9wi9W9N6RIjuqaJHWsE/zl3VNRgUUrxNLezn1Ofnv/oVx8P90mTNXLgxJ84fzoTNKQ=="
+      },
       "SerilogAnalyzer": {
         "type": "Direct",
         "requested": "[0.15.0, )",

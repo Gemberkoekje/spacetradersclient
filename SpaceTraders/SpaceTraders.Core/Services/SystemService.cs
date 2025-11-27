@@ -18,7 +18,7 @@ public class SystemService(Client.SpaceTradersService service)
     public async Task<SystemWaypoint> GetSystemAsync(string symbol)
     {
         var response = await service.EnqueueCachedAsync((client, ct) => client.GetSystemAsync(symbol, ct), $"GetSystemAsync_{symbol}", TimeSpan.FromDays(1));
-        var s = response.Data;
+        var s = response.Value.Data;
         var systemWaypoint = new SystemWaypoint()
         {
             Constellation = s.Constellation,

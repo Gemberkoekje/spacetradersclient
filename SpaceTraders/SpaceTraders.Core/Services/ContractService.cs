@@ -4,7 +4,6 @@ using SpaceTraders.Core.Models.ContractModels;
 using System;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.Core.Services;
@@ -14,7 +13,7 @@ public sealed class ContractService(Client.SpaceTradersService service)
     public async Task<Contract[]> GetMyContracts()
     {
         var response = await service.EnqueueCachedAsync((client, ct) => client.GetContractsAsync(null, null, ct), "GetContractsAsync", TimeSpan.FromSeconds(10));
-        var contracts = response.Data;
+        var contracts = response.Value.Data;
         var result = contracts.Select(contract => MapContract(contract)).ToArray();
         return result;
     }
@@ -49,21 +48,12 @@ public sealed class ContractService(Client.SpaceTradersService service)
 
     public async Task<Result<Contract>> NegotiateContract(string shipSymbol)
     {
-        try
+        var result = await service.EnqueueAsync((client, ct) => client.NegotiateContractAsync(shipSymbol, ct), true);
+        if (result.IsValid)
         {
-            var result = await service.EnqueueAsync((client, ct) => client.NegotiateContractAsync(shipSymbol, ct), true);
-            if (result != null)
-            {
-                return MapContract(result.Data.Contract);
-            }
-            return Result.WithMessages<Contract>(ValidationMessage.Error("Failed to negotiate contract"));
+            return MapContract(result.Value.Data.Contract);
         }
-        catch (Client.ApiException ex)
-        {
-            var response = ex.Response;
-            var error = JsonSerializer.Deserialize<Client.ErrorResponse>(response);
-            return Result.WithMessages<Contract>(ValidationMessage.Error($"Failed to negotiate contract: {error.error.message}"));
-        }
+        return Result.WithMessages<Contract>(result.Messages);
     }
 
 }
