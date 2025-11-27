@@ -31,8 +31,9 @@ public sealed class RootWindow : Window
     private void DrawContent()
     {
         var y = 2;
-        Controls.AddButton($"Agent", 2, y++, (_, _) => RootScreen.ShowAgentWindow());
-        Controls.AddButton($"Ships", 2, y++, (_, _) => RootScreen.ShowShipsWindow());
+        Controls.AddAsyncButton($"Agent", 2, y++, () => RootScreen.ShowAgentWindow(), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
+        Controls.AddAsyncButton($"Ships", 2, y++, () => RootScreen.ShowShipsWindow(), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
+        Controls.AddAsyncButton($"Contracts", 2, y++, () => RootScreen.ShowContractWindow(), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
         Controls.AddButton($"Debug Glyph Window", 2, Game.Instance.ScreenCellsY - 2, (_, _) => RootScreen.ShowGlyphWindow());
     }
 }

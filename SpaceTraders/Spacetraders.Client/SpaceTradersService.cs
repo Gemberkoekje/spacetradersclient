@@ -1,12 +1,11 @@
-﻿using SpaceTraders.Client;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
 
-namespace Spacetraders.Client;
+namespace SpaceTraders.Client;
 
 public sealed class SpaceTradersService(
     SpaceTradersClient client,

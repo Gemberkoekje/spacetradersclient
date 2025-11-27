@@ -1,18 +1,26 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
-using SpaceTraders.Core.Models.SystemModels;
+﻿using SpaceTraders.Core.Models.SystemModels;
+using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
+using SpaceTraders.UI.Interfaces;
 
 namespace SpaceTraders.UI.Windows;
 
-internal class SystemDataWindow : ClosableWindow
+internal sealed class SystemDataWindow : ClosableWindow, ICanLoadData<SystemWaypoint>
 {
-    private SystemWaypoint System { get; init; }
+    private SystemWaypoint? System { get; set; }
 
-    public SystemDataWindow(SystemWaypoint waypoint, RootScreen rootScreen)
+    private SystemService SystemService { get; init; }
+
+    public SystemDataWindow(RootScreen rootScreen, SystemService systemService)
         : base(rootScreen, 45, 30)
     {
-        Title = $"System {waypoint.Symbol}";
-        System = waypoint;
+        SystemService = systemService;
+    }
+
+    public void LoadData(SystemWaypoint data)
+    {
+        Title = $"System {data.Symbol}";
+        System = data;
         DrawContent();
     }
 
@@ -30,8 +38,7 @@ internal class SystemDataWindow : ClosableWindow
         Controls.AddLabel($"Position: {System.X}, {System.Y}", 2, y++);
         Controls.AddLabel($"Waypoints: {System.Waypoints.Count}", 2, y++);
         Controls.AddLabel($"Factions: {System.Factions.Count}", 2, y++);
-        Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow, SystemWaypoint>(RootScreen.GameSession.GetSystem(System.Symbol)));
-
+        Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow, SystemWaypoint>(SystemService.GetSystem(System.Symbol)));
 
         ResizeAndRedraw();
     }

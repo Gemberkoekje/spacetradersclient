@@ -1,17 +1,27 @@
 ﻿using SpaceTraders.Core.Models.ShipModels;
+using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
+using SpaceTraders.UI.Interfaces;
+using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal class ShipWindow : ClosableWindow
+internal sealed class ShipWindow : ClosableWindow, ICanLoadData<Ship>
 {
-    private Ship Ship { get; init; }
+    private Ship? Ship { get; set; }
 
-    public ShipWindow(Ship ship, RootScreen rootScreen)
+    private ContractService ContractService { get; init; }
+
+    public ShipWindow(RootScreen rootScreen, ContractService contractService)
         : base(rootScreen, 52, 20)
     {
-        Title = $"Ship {ship.Symbol}";
-        Ship = ship;
+        ContractService = contractService;
+    }
+
+    public void LoadData(Ship data)
+    {
+        Title = $"Ship {data.Symbol}";
+        Ship = data;
         DrawContent();
     }
 
@@ -26,6 +36,20 @@ internal class ShipWindow : ClosableWindow
         Controls.AddLabel($"Role: {Ship.Registration.Role}", 2, y++);
         Controls.AddLabel($"Navigation:", 2, y);
         Controls.AddButton($"{Ship.Navigation.Status} {(Ship.Navigation.Status == Core.Enums.ShipNavStatus.InTransit ? "to" : "at")} {Ship.Navigation.Route.Destination.Symbol}{(Ship.Navigation.Status == Core.Enums.ShipNavStatus.InTransit ? $" until {Ship.Navigation.Route.ArrivalTime}" : "")}", 15, y++, (_, _) => RootScreen.ShowWindow<NavigationWindow, Navigation>(Ship.Navigation));
+        Controls.AddButton($"Negotiate new contract", 2, y++, (_, _) => NegotiateNewContract().GetAwaiter().GetResult());
         ResizeAndRedraw();
+    }
+
+    private async Task NegotiateNewContract()
+    {
+        var result = await ContractService.NegotiateContract(Ship.Symbol);
+        if(result.IsValid)
+        {
+            RootScreen.ShowWindow<ContractWindow, Core.Models.ContractModels.Contract>(result.Value);
+        }
+        else
+        {
+            RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", result.Messages));
+        }
     }
 }

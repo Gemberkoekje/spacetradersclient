@@ -1,5 +1,4 @@
-﻿using Spacetraders.Client;
-using SpaceTraders.Core.Extensions;
+﻿using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Models.SystemModels;
 using System;
 using System.Collections.Generic;
@@ -9,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.Core.Services;
 
-public class SystemService(SpaceTradersService service)
+public class SystemService(Client.SpaceTradersService service)
 {
     public SystemWaypoint GetSystem(string symbol)
     {

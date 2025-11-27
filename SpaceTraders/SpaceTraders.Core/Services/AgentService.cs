@@ -1,12 +1,11 @@
-﻿using Spacetraders.Client;
-using SpaceTraders.Core.Extensions;
+﻿using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Models.AgentModels;
 using System;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.Core.Services;
 
-public sealed class AgentService(SpaceTradersService service)
+public sealed class AgentService(Client.SpaceTradersService service)
 {
     public async Task<Agent> GetAgent(string? agentSymbol = null)
     {

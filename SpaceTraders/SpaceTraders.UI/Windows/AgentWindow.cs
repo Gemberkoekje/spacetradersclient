@@ -1,23 +1,34 @@
-using SadRogue.Primitives;
 using SpaceTraders.Core.Models.AgentModels;
 using SpaceTraders.UI.Extensions;
+using SpaceTraders.UI.Interfaces;
 
 namespace SpaceTraders.UI.Windows;
 
-public sealed class AgentWindow : ClosableWindow
+public sealed class AgentWindow : ClosableWindow, ICanLoadData<Agent>
 {
-    private readonly Agent _agent;
+    private Agent? _agent { get; set; }
 
-    public AgentWindow(Agent agent, RootScreen rootScreen)
+    public AgentWindow(RootScreen rootScreen)
         : base(rootScreen, 52, 11)
     {
-        _agent = agent;
-        Title = $"Agent: {agent.Symbol}";
+    }
+
+    public void LoadData(Agent data)
+    {
+        _agent = data;
+        Title = $"Agent: {data.Symbol}";
         DrawContent();
     }
 
     private void DrawContent()
     {
+        if (_agent is null)
+        {
+            Controls.AddLabel($"No agent data available.", 2, 2);
+            ResizeAndRedraw();
+            return;
+        }
+
         Controls.AddLabel($"Symbol: {_agent.Symbol}", 2, 2);
         Controls.AddLabel($"ShipCount: {_agent.ShipCount}", 2, 3);
         Controls.AddLabel($"Headquarters: {_agent.Headquarters}",2, 4);

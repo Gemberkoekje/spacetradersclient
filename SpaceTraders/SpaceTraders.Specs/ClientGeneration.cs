@@ -15,13 +15,13 @@ namespace SpaceTraders.Specs;
 /// </summary>
 /// <remarks>
 /// The generation process fetches the remote OpenAPI JSON, applies schema and enum description patches, and
-/// writes (or updates) the generated C# client file inside the <c>Spacetraders.Client/Generated</c> directory.
+/// writes (or updates) the generated C# client file inside the <c>SpaceTraders.Client/Generated</c> directory.
 /// </remarks>
 public sealed class ClientGeneration
 {
     /// <summary>
     /// Fetches the SpaceTraders OpenAPI specification, applies name and enum description fixes, and writes
-    /// the regenerated NSwag client into the <c>Spacetraders.Client</c> project if content changed.
+    /// the regenerated NSwag client into the <c>SpaceTraders.Client</c> project if content changed.
     /// </summary>
     /// <remarks>
     /// This is an explicit test acting as an on-demand code generation task. It has a side effect of writing a file
@@ -31,7 +31,7 @@ public sealed class ClientGeneration
     /// <exception cref="IOException">Thrown if reading or writing the target client file fails.</exception>
     /// <exception cref="JsonReaderException">Thrown if the fetched JSON cannot be parsed.</exception>
     [Test]
-    [Explicit("Generates and writes the NSwag client into Spacetraders.Client project with fixed schema names.")]
+    [Explicit("Generates and writes the NSwag client into SpaceTraders.Client project with fixed schema names.")]
     public async Task GeneratesClientAndSavesToProject()
     {
         using var http = new HttpClient();
@@ -53,10 +53,13 @@ public sealed class ClientGeneration
         var generator = new CSharpClientGenerator(document, settings);
         var code = generator.GenerateFile();
 
+        // Post-process: ensure JSON POSTs without a body send an empty object `{}` instead of an empty string.
+        code = FixEmptyJsonBodiesInGeneratedCode(code);
+
         var solutionRoot = FindSolutionRoot();
         Assert.That(solutionRoot, Is.Not.Null, "Solution root could not be located.");
 
-        var targetDir = Path.Combine(solutionRoot!, "Spacetraders.Client", "Generated");
+        var targetDir = Path.Combine(solutionRoot!, "SpaceTraders.Client", "Generated");
         Directory.CreateDirectory(targetDir);
         var targetFile = Path.Combine(targetDir, "SpaceTradersClient.cs");
 
@@ -164,5 +167,34 @@ public sealed class ClientGeneration
             dir = Directory.GetParent(dir)?.FullName;
         }
         return null;
+    }
+
+    /// <summary>
+    /// NSwag emits an empty string content for POSTs with no request body. The SpaceTraders API requires an
+    /// empty JSON object ({}). This normalizes the generated code accordingly.
+    /// </summary>
+    /// <param name="code">The generated C# client source code.</param>
+    /// <returns>Patched code which sends '{}' instead of an empty string for JSON requests without a body.</returns>
+    private static string FixEmptyJsonBodiesInGeneratedCode(string code)
+    {
+        // Most specific: constructor that already declares application/json
+        code = code.Replace(
+            "new StringContent(string.Empty, System.Text.Encoding.UTF8, \"application/json\")",
+            "new StringContent(\"{}\", System.Text.Encoding.UTF8, \"application/json\")");
+
+        code = code.Replace(
+            "new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, \"application/json\")",
+            "new System.Net.Http.StringContent(\"{}\", System.Text.Encoding.UTF8, \"application/json\")");
+
+        // Fallback: plain empty content (content type typically set on the next line)
+        code = code.Replace(
+            "new StringContent(string.Empty)",
+            "new StringContent(\"{}\")");
+
+        code = code.Replace(
+            "new System.Net.Http.StringContent(string.Empty)",
+            "new System.Net.Http.StringContent(\"{}\")");
+
+        return code;
     }
 }

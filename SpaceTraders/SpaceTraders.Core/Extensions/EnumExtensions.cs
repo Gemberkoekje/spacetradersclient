@@ -148,6 +148,7 @@ public static class EnumExtensions
             _ => throw new ArgumentOutOfRangeException(nameof(systemType), $"Not expected system type value: {systemType}"),
         };
     }
+
     public static WaypointModifierSymbol Convert(this Client.WaypointModifierSymbol waypointModifierSymbol)
     {
         return waypointModifierSymbol switch
@@ -158,6 +159,17 @@ public static class EnumExtensions
             Client.WaypointModifierSymbol.CRITICAL_LIMIT => WaypointModifierSymbol.CriticalLimit,
             Client.WaypointModifierSymbol.CIVIL_UNREST => WaypointModifierSymbol.CivilUnrest,
             _ => throw new ArgumentOutOfRangeException(nameof(waypointModifierSymbol), $"Not expected waypoint modifier symbol value: {waypointModifierSymbol}"),
+        };
+    }
+
+    public static ContractType Convert(this Client.ContractType contractType)
+    {
+        return contractType switch
+        {
+            Client.ContractType.PROCUREMENT => ContractType.Procurement,
+            Client.ContractType.SHUTTLE => ContractType.Shuttle,
+            Client.ContractType.TRANSPORT => ContractType.Transport,
+            _ => throw new ArgumentOutOfRangeException(nameof(contractType), $"Not expected contract type value: {contractType}"),
         };
     }
 

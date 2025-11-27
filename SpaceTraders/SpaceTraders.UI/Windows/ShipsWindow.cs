@@ -1,19 +1,21 @@
-﻿using SadConsole.UI;
-using SadConsole.UI.Controls;
-using SadRogue.Primitives;
-using SpaceTraders.Core.Models.ShipModels;
+﻿using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.UI.Extensions;
+using SpaceTraders.UI.Interfaces;
 
 namespace SpaceTraders.UI.Windows;
 
-internal class ShipsWindow : ClosableWindow
+internal sealed class ShipsWindow : ClosableWindow, ICanLoadData<Ship[]>
 {
-    Ship[] Ships { get; init; }
+    private Ship[] Ships { get; set; } = [];
 
-    public ShipsWindow(Ship[] ships, RootScreen rootScreen)
+    public ShipsWindow(RootScreen rootScreen)
         : base(rootScreen, 52, 11)
     {
-        Ships = ships;
+    }
+
+    public void LoadData(Ship[] data)
+    {
+        Ships = data;
         Title = $"Ships";
         DrawContent();
     }
@@ -27,4 +29,5 @@ internal class ShipsWindow : ClosableWindow
         }
         ResizeAndRedraw();
     }
+
 }

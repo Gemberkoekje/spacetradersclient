@@ -2,20 +2,25 @@
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.UI.Extensions;
+using SpaceTraders.UI.Interfaces;
 using System;
 using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal class SystemMapWindow : ClosableWindow
+internal sealed class SystemMapWindow : ClosableWindow, ICanLoadData<SystemWaypoint>
 {
-    private SystemWaypoint System { get; init; }
+    private SystemWaypoint? System { get; set; }
 
-    public SystemMapWindow(SystemWaypoint waypoint, RootScreen rootScreen)
+    public SystemMapWindow(RootScreen rootScreen)
         : base(rootScreen, 45, 30)
     {
-        Title = $"System {waypoint.Symbol}";
-        System = waypoint;
+    }
+
+    public void LoadData(SystemWaypoint data)
+    {
+        Title = $"System {data.Symbol}";
+        System = data;
         DrawContent();
     }
 
@@ -187,4 +192,5 @@ internal class SystemMapWindow : ClosableWindow
                 return "?";
         }
     }
+
 }

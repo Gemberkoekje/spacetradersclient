@@ -1,18 +1,15 @@
 // See https://aka.ms/new-console-template for more information
-using DotNetProjectFile.MsBuild;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SadConsole;
 using SadConsole.Configuration;
-using Spacetraders.Client;
 using SpaceTraders.Client;
 using SpaceTraders.Core.Loaders;
-using SpaceTraders.Core.Models.GameModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI;
+using SpaceTraders.UI.Windows;
 using System;
 using System.Net.Http.Headers;
-using static SadConsole.Settings;
 
 // Generic host setup (gives config, logging, DI).
 using var host = Host.CreateDefaultBuilder(args)
@@ -26,13 +23,21 @@ using var host = Host.CreateDefaultBuilder(args)
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         });
         // RootScreen currently has a parameterless ctor, register for potential future DI.
-        services.AddTransient<RootScreen>();
-        services.AddTransient<SplashScreen>();
+        services.AddSingleton<RootScreen>((s) => new RootScreen(s));
         services.AddTransient<AgentService>();
         services.AddTransient<ShipService>();
         services.AddTransient<SystemService>();
-        services.AddSingleton<GameSession>();
         services.AddSingleton<SpaceTradersService>();
+        services.AddSingleton<ContractService>();
+        services.AddTransient<AgentWindow>();
+        services.AddTransient<ContractWindow>();
+        services.AddTransient<NavigationWindow>();
+        services.AddTransient<RootWindow>();
+        services.AddTransient<ShipsWindow>();
+        services.AddTransient<ShipWindow>();
+        services.AddTransient<SystemDataWindow>();
+        services.AddTransient<SystemMapWindow>();
+        services.AddTransient<WarningWindow>();
     })
     .Build();
 

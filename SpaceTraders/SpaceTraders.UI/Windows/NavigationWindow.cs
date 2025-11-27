@@ -1,20 +1,27 @@
-﻿using SadRogue.Primitives;
-using SpaceTraders.Core.Models.ShipModels;
+﻿using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
+using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
-using System.Linq;
+using SpaceTraders.UI.Interfaces;
 
 namespace SpaceTraders.UI.Windows;
 
-internal class NavigationWindow : ClosableWindow
+internal sealed class NavigationWindow : ClosableWindow, ICanLoadData<Navigation>
 {
-    Navigation? Navigation { get; set; }
+    private Navigation? Navigation { get; set; }
 
-    public NavigationWindow(Navigation navigation, RootScreen rootScreen)
+    private SystemService SystemService { get; init; }
+
+    public NavigationWindow(RootScreen rootScreen, SystemService systemService)
         : base(rootScreen, 52, 20)
     {
-        Title = $"Navigation for ship {navigation.ShipSymbol}";
-        Navigation = navigation;
+        SystemService = systemService;
+    }
+
+    public void LoadData(Navigation data)
+    {
+        Title = $"Navigation for ship {data.ShipSymbol}";
+        Navigation = data;
         DrawContent();
     }
 
@@ -24,7 +31,7 @@ internal class NavigationWindow : ClosableWindow
             return;
         var y = 2;
         Controls.AddLabel($"System:", 2, y);
-        Controls.AddButton($"{Navigation.SystemSymbol}", 10, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow, SystemWaypoint>(RootScreen.GameSession.GetSystem(Navigation.SystemSymbol)));
+        Controls.AddButton($"{Navigation.SystemSymbol}", 10, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow, SystemWaypoint>(SystemService.GetSystem(Navigation.SystemSymbol)));
         Controls.AddLabel($"Waypoint: {Navigation.WaypointSymbol}", 2, y++);
         Controls.AddLabel($"Destination: {Navigation.Route.Destination.Symbol}", 2, y++);
         Controls.AddLabel($"Destination: {Navigation.Route.Destination.SystemSymbol}", 2, y++);

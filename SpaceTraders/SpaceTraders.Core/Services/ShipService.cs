@@ -1,4 +1,3 @@
-using Spacetraders.Client;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Models.ShipModels;
 using System;
@@ -15,7 +14,7 @@ namespace SpaceTraders.Core.Loaders;
 /// Translates the raw client DTO model into the domain <see cref="Ship"/> aggregate with nested value objects
 /// and converts generated enum values into internal enums via extension methods.
 /// </remarks>
-public sealed class ShipService(SpaceTradersService service)
+public sealed class ShipService(Client.SpaceTradersService service)
 {
 
     public async Task<Ship[]> GetMyShips()
