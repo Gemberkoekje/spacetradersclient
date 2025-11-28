@@ -24,7 +24,7 @@ public sealed class ShipService(Client.SpaceTradersService service)
             (client, page, limit, ct) => client.GetMyShipsAsync(page, limit, ct),
             page => page.Data,
             "GetMyShipsAsync",
-            TimeSpan.FromSeconds(1));
+            TimeSpan.FromSeconds(60));
         return [.. ships.Value.Select(MapShip)];
     }
     /// <summary>
@@ -35,7 +35,7 @@ public sealed class ShipService(Client.SpaceTradersService service)
     /// <exception cref="Client.ApiException">Thrown when the API request fails.</exception>
     public async Task<Ship> GetShip(string symbol)
     {
-        var ship = await service.EnqueueCachedAsync((client, ct) => client.GetMyShipAsync(symbol, ct), $"GetMyShipAsync_{symbol}", TimeSpan.FromSeconds(10));
+        var ship = await service.EnqueueCachedAsync((client, ct) => client.GetMyShipAsync(symbol, ct), $"GetMyShipAsync_{symbol}", TimeSpan.FromSeconds(60));
         return MapShip(ship.Value.Data);
     }
 

@@ -1,4 +1,5 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
+﻿using SpaceTraders.Core.Loaders;
+using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
@@ -8,18 +9,20 @@ namespace SpaceTraders.UI.Windows;
 
 internal sealed class NavigationWindow : ClosableWindow, ICanLoadData<Navigation>
 {
+    string? ICanLoadData.Symbol { get; set; }
+
     private Navigation? Navigation { get; set; }
 
-    private SystemService SystemService { get; init; }
-
-    public NavigationWindow(RootScreen rootScreen, SystemService systemService)
+    public NavigationWindow(RootScreen rootScreen)
         : base(rootScreen, 52, 20)
     {
-        SystemService = systemService;
+        DrawContent();
     }
 
     public void LoadData(Navigation data)
     {
+        if (Navigation is not null && Navigation == data)
+            return;
         Title = $"Navigation for ship {data.ShipSymbol}";
         Navigation = data;
         DrawContent();
@@ -27,11 +30,16 @@ internal sealed class NavigationWindow : ClosableWindow, ICanLoadData<Navigation
 
     private void DrawContent()
     {
+        Clean();
         if (Navigation is null)
+        {
+            Controls.AddLabel($"Navigation data loading...", 2, 2);
+            ResizeAndRedraw();
             return;
+        }
         var y = 2;
         Controls.AddLabel($"System:", 2, y);
-        Controls.AddAsyncButton($"{Navigation.SystemSymbol}", 10, y++, async () => RootScreen.ShowWindow<SystemDataWindow, SystemWaypoint>(await SystemService.GetSystemAsync(Navigation.SystemSymbol)), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
+        Controls.AddButton($"{Navigation.SystemSymbol}", 10, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow>(Navigation.SystemSymbol));
         Controls.AddLabel($"Waypoint: {Navigation.WaypointSymbol}", 2, y++);
         Controls.AddLabel($"Destination: {Navigation.Route.Destination.Symbol}", 2, y++);
         Controls.AddLabel($"Destination: {Navigation.Route.Destination.SystemSymbol}", 2, y++);

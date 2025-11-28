@@ -6,7 +6,13 @@ namespace SpaceTraders.UI.Windows;
 
 public class ClosableWindow : Window
 {
+    public string? ParentSymbol { get; set; } = null;
+
+    public string? Symbol { get; set; } = null;
+
     protected RootScreen RootScreen { get; init; }
+
+    protected bool Loaded { get; set; } = false;
 
     public ClosableWindow(RootScreen rootScreen, int width, int height)
         : base(width, height)
@@ -35,10 +41,22 @@ public class ClosableWindow : Window
         Controls.Single(c => c.Name == "CloseButton").Position = (Width - 4, 0);
         DrawBorder();
         IsDirty = true;
-        Center();
+        if (!Loaded)
+        {
+            Loaded = true;
+            Center();
+        }
         if (Position.Y < 0)
         {
             Position = (Position.X, 0);
+        }
+    }
+
+    protected void Clean()
+    {
+        foreach (var c in Controls.Where(c => c.Name != "CloseButton").ToList())
+        {
+            Controls.Remove(c);
         }
     }
 }

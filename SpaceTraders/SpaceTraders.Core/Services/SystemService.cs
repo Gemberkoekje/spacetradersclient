@@ -1,4 +1,5 @@
 ﻿using SpaceTraders.Core.Extensions;
+using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.SystemModels;
 using System;
 using System.Linq;
@@ -13,7 +14,14 @@ public class SystemService(Client.SpaceTradersService service, WaypointService w
     {
         var response = await service.EnqueueCachedAsync((client, ct) => client.GetSystemAsync(symbol, ct), $"GetSystemAsync_{symbol}", TimeSpan.FromDays(1));
         var s = response.Value.Data;
-        var systemWaypoint = new SystemWaypoint()
+        var waypoints = await waypointService.GetWaypoints(symbol);
+        var systemWaypoint = MapSystemWaypoint(s, waypoints);
+        return systemWaypoint;
+    }
+
+    private static SystemWaypoint MapSystemWaypoint(Client.StarSystem s, Waypoint[] waypoints)
+    {
+        return new SystemWaypoint()
         {
             Constellation = s.Constellation,
             Symbol = s.Symbol,
@@ -21,10 +29,9 @@ public class SystemService(Client.SpaceTradersService service, WaypointService w
             SystemType = s.Type.Convert(),
             X = s.X,
             Y = s.Y,
-            Waypoints = await waypointService.GetWaypoints(symbol),
+            Waypoints = waypoints,
             Factions = [.. s.Factions.Select(f => f.Symbol.Convert())],
             Name = s.Name,
         };
-        return systemWaypoint;
     }
 }

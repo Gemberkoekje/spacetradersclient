@@ -40,6 +40,9 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<SystemMapWindow>();
         services.AddTransient<WarningWindow>();
         services.AddTransient<WaypointWindow>();
+        services.AddTransient<StarMapWindow>();
+        services.AddSingleton<BackgroundDataUpdater>();
+        services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<BackgroundDataUpdater>());
     })
     .Build();
 
@@ -51,4 +54,11 @@ SadConsole.Configuration.Builder
     .SetStartingScreen((_) => host.Services.GetRequiredService<RootScreen>())
     .IsStartingScreenFocused(true)
     .ConfigureFonts(true)
-    .Run();
+    .OnStart(async (_, _) =>
+    {
+        await host.StartAsync();
+    })
+    .OnEnd(async (_, _) =>
+    {
+        await host.StopAsync();
+    }).Run();

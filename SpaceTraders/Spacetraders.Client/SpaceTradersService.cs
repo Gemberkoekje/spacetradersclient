@@ -1,6 +1,7 @@
 ﻿using Qowaiv.Validation.Abstractions;
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
@@ -38,6 +39,47 @@ public sealed class SpaceTradersService(
             }
             catch (ApiException ex)
             {
+                // If we hit a 429 (Too Many Requests), wait a bit and retry once.
+                if (ex.StatusCode == 429)
+                {
+                    // Try read Retry-After from response headers if available, else default to 5 seconds.
+                    var retryAfter = TimeSpan.FromSeconds(5);
+                    try
+                    {
+                        if (ex.Headers is not null && ex.Headers.TryGetValue("Retry-After", out var values))
+                        {
+                            var header = values?.FirstOrDefault();
+                            if (int.TryParse(header, out var seconds) && seconds > 0)
+                            {
+                                retryAfter = TimeSpan.FromSeconds(seconds);
+                            }
+                        }
+                    }
+                    catch { /* ignore header parsing issues */ }
+
+                    try
+                    {
+                        await Task.Delay(retryAfter, ct).ConfigureAwait(false);
+                        var retryResult = await op(client, ct).ConfigureAwait(false);
+                        tcs.TrySetResult(retryResult);
+                        return;
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        tcs.TrySetCanceled(ct);
+                        return;
+                    }
+                    catch (ApiException retryEx) when (retryEx.StatusCode == 429)
+                    {
+                        // Fall through to normal error handling below
+                    }
+                    catch (Exception retryEx)
+                    {
+                        tcs.TrySetException(retryEx);
+                        return;
+                    }
+                }
+
                 var response = ex.Response;
                 var error = JsonSerializer.Deserialize<ErrorResponse>(response);
                 if(error is null || error.error is null)
@@ -131,6 +173,15 @@ public sealed class SpaceTradersService(
         return tcs.Task;
     }
 
+    public void InvalidateCache(string cacheKey)
+    {
+        if (string.IsNullOrWhiteSpace(cacheKey))
+        {
+            return;
+        }
+        _cache.Keys.Where(c => c.StartsWith(cacheKey)).ToList().ForEach(c => _cache.TryRemove(c, out _));
+    }
+
     // Cached variant: returns cached result by cacheKey until ttl expires.
     public Task<Result<T>> EnqueueCachedAsync<T>(
         Func<SpaceTradersClient, CancellationToken, Task<T>> operation,
@@ -200,12 +251,25 @@ public sealed class SpaceTradersService(
                         continue;
                 }
 
-                using var lease = await _limiter.AcquireAsync(1, ct).ConfigureAwait(false);
-                if (!lease.IsAcquired)
+                // Acquire a token before executing the dequeued work. If none available, wait according to RetryAfter.
+                while (true)
                 {
-                    // Should not happen with TokenBucketRateLimiter; yield to avoid tight loop
-                    await Task.Yield();
-                    continue;
+                    using var lease = await _limiter.AcquireAsync(1, ct).ConfigureAwait(false);
+                    if (lease.IsAcquired)
+                    {
+                        break;
+                    }
+
+                    // Try to get suggested retry delay and wait. If absent, wait a minimal delay to avoid a tight loop.
+                    if (lease.TryGetMetadata("RetryAfter", out object? retryObj) && retryObj is TimeSpan retryAfter && retryAfter > TimeSpan.Zero)
+                    {
+                        await Task.Delay(retryAfter, ct).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false);
+                    }
+                    // loop and try acquire again
                 }
 
                 await work.ExecuteAsync(client, ct).ConfigureAwait(false);

@@ -8,6 +8,8 @@ namespace SpaceTraders.UI.Windows;
 
 internal sealed class ShipWindow : ClosableWindow, ICanLoadData<Ship>
 {
+    string? ICanLoadData.Symbol { get; set; }
+
     private Ship? Ship { get; set; }
 
     private ContractService ContractService { get; init; }
@@ -16,10 +18,14 @@ internal sealed class ShipWindow : ClosableWindow, ICanLoadData<Ship>
         : base(rootScreen, 52, 20)
     {
         ContractService = contractService;
+        DrawContent();
     }
 
     public void LoadData(Ship data)
     {
+        if (Ship is not null && Ship == data)
+            return;
+
         Title = $"Ship {data.Symbol}";
         Ship = data;
         DrawContent();
@@ -27,29 +33,34 @@ internal sealed class ShipWindow : ClosableWindow, ICanLoadData<Ship>
 
     private void DrawContent()
     {
+        Clean();
         if (Ship is null)
+        {
+            Controls.AddLabel($"Ship loading...", 2, 2);
+            ResizeAndRedraw();
             return;
+        }
         var y = 2;
         Controls.AddLabel($"Symbol: {Ship.Symbol}", 2, y++);
         Controls.AddLabel($"Name: {Ship.Registration.Name}", 2, y++);
         Controls.AddLabel($"Faction: {Ship.Registration.FactionSymbol}", 2, y++);
         Controls.AddLabel($"Role: {Ship.Registration.Role}", 2, y++);
         Controls.AddLabel($"Navigation:", 2, y);
-        Controls.AddButton($"{Ship.Navigation.Status} {(Ship.Navigation.Status == Core.Enums.ShipNavStatus.InTransit ? "to" : "at")} {Ship.Navigation.Route.Destination.Symbol}{(Ship.Navigation.Status == Core.Enums.ShipNavStatus.InTransit ? $" until {Ship.Navigation.Route.ArrivalTime}" : "")}", 15, y++, (_, _) => RootScreen.ShowWindow<NavigationWindow, Navigation>(Ship.Navigation));
-        Controls.AddButton($"Negotiate new contract", 2, y++, (_, _) => NegotiateNewContract().GetAwaiter().GetResult());
+        Controls.AddButton($"{Ship.Navigation.Status} {(Ship.Navigation.Status == Core.Enums.ShipNavStatus.InTransit ? "to" : "at")} {Ship.Navigation.Route.Destination.Symbol}{(Ship.Navigation.Status == Core.Enums.ShipNavStatus.InTransit ? $" until {Ship.Navigation.Route.ArrivalTime}" : "")}", 15, y++, (_, _) => RootScreen.ShowWindow<NavigationWindow>(Ship.Symbol));
+        Controls.AddButton($"Negotiate new contract", 2, y++, (_, _) => RootScreen.DoAsynchronousEventually(NegotiateNewContract));
         ResizeAndRedraw();
     }
 
     private async Task NegotiateNewContract()
     {
-        var result = await ContractService.NegotiateContract(Ship.Symbol);
-        if(result.IsValid)
+        var result = await ContractService.NegotiateContract(Ship!.Symbol);
+        if (result.IsValid)
         {
-            RootScreen.ShowWindow<ContractWindow, Core.Models.ContractModels.Contract>(result.Value);
+            RootScreen.ShowWindow<ContractWindow>();
         }
         else
         {
-            RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", result.Messages));
+            RootScreen.ShowWarningWindow(result);
         }
     }
 }

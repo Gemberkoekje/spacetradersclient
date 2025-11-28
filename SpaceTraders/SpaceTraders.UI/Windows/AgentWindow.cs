@@ -11,10 +11,14 @@ public sealed class AgentWindow : ClosableWindow, ICanLoadData<Agent>
     public AgentWindow(RootScreen rootScreen)
         : base(rootScreen, 52, 11)
     {
+        DrawContent();
     }
 
     public void LoadData(Agent data)
     {
+        if (_agent is not null && _agent == data)
+            return;
+
         _agent = data;
         Title = $"Agent: {data.Symbol}";
         DrawContent();
@@ -22,9 +26,10 @@ public sealed class AgentWindow : ClosableWindow, ICanLoadData<Agent>
 
     private void DrawContent()
     {
+        Clean();
         if (_agent is null)
         {
-            Controls.AddLabel($"No agent data available.", 2, 2);
+            Controls.AddLabel($"Agent data loading...", 2, 2);
             ResizeAndRedraw();
             return;
         }

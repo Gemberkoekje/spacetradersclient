@@ -15,10 +15,13 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanLoadData<SystemWaypo
     public SystemMapWindow(RootScreen rootScreen)
         : base(rootScreen, 45, 30)
     {
+        DrawContent();
     }
 
     public void LoadData(SystemWaypoint data)
     {
+        if (System is not null && System == data)
+            return;
         Title = $"System {data.Symbol}";
         System = data;
         DrawContent();
@@ -26,8 +29,13 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanLoadData<SystemWaypo
 
     private void DrawContent()
     {
+        Clean();
         if (System is null)
+        {
+            Controls.AddLabel($"System loading...", 2, 2);
+            ResizeAndRedraw();
             return;
+        }
 
         // Compute extents.
         int minX = System.Waypoints.Min(w => w.X);

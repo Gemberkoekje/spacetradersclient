@@ -4,6 +4,7 @@ using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.ContractModels;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,7 +19,7 @@ public sealed class ContractService(Client.SpaceTradersService service)
             (client, page, limit, ct) => client.GetContractsAsync(page, limit, ct),
             page => page.Data,
             "GetContractsAsync",
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(60));
 
         var result = clientContracts.Value.Select(MapContract).ToArray();
         return result;
@@ -44,7 +45,7 @@ public sealed class ContractService(Client.SpaceTradersService service)
                     TradeSymbol = d.TradeSymbol,
                     DestinationSymbol = d.DestinationSymbol,
                     UnitsRequired = d.UnitsRequired,
-                }).ToList(),
+                }).ToImmutableHashSet(),
             },
             Accepted = contract.Accepted,
             Fulfilled = contract.Fulfilled,
@@ -57,6 +58,7 @@ public sealed class ContractService(Client.SpaceTradersService service)
         var result = await service.EnqueueAsync((client, ct) => client.NegotiateContractAsync(shipSymbol, ct), true);
         if (result.IsValid)
         {
+            service.InvalidateCache("GetContractsAsync");
             return MapContract(result.Value.Data.Contract);
         }
         return Result.WithMessages<Contract>(result.Messages);

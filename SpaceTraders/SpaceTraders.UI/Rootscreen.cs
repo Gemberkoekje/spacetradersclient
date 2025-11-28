@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Qowaiv.Validation.Abstractions;
 using SadConsole;
 using SadConsole.UI;
 using SadConsole.UI.Windows;
@@ -20,7 +21,7 @@ public class RootScreen : ScreenObject, IDisposable
     private readonly ScreenSurface _mainSurface;
     IServiceProvider ServiceProvider { get; init; }
     private bool disposed;
-    private List<Window> _windows = [];
+    public List<Window> Windows = [];
     private RootWindow _rootWindow;
     private GlyphSelectPopup _glyphWindow;
 
@@ -60,7 +61,7 @@ public class RootScreen : ScreenObject, IDisposable
         _mainSurface.Dispose();
         _rootWindow.Dispose();
         _glyphWindow.Dispose();
-        foreach (var window in _windows)
+        foreach (var window in Windows)
         {
             window.Dispose();
         }
@@ -89,44 +90,34 @@ public class RootScreen : ScreenObject, IDisposable
             clear: true);
     }
 
-    internal void ShowWindow<TWindow, TData>(TData data) where TWindow : Window
+    internal void ShowWindow<TWindow>(string? symbol = null, string? parentsymbol = null) where TWindow : Window
     {
         var window = ServiceProvider.GetService<TWindow>();
         if (window == null)
         {
             return;
         }
-        if (window is ICanLoadData<TData> dataWindow)
+        if (window is ICanLoadData dataWindow)
         {
-            dataWindow.LoadData(data);
-        }
-        if (window is ICanLoadData<Ship[]> shipWindow)
-        {
-            var shipService = ServiceProvider.GetRequiredService<ShipService>();
-            shipWindow.LoadData(shipService.GetMyShips().GetAwaiter().GetResult());
+            dataWindow.Symbol = symbol;
+            dataWindow.ParentSymbol = parentsymbol;
         }
         _rootWindow.Children.Add(window);
-        _windows.Add(window);
+        Windows.Add(window);
         window.Show();
     }
 
-    internal async Task ShowAgentWindow()
+    internal void ShowWarningWindow(Result result)
     {
-        var agentService = ServiceProvider.GetRequiredService<AgentService>();
-        ShowWindow<AgentWindow, Agent>(await agentService.GetAgent());
-    }
-
-    internal async Task ShowShipsWindow()
-    {
-        var shipService = ServiceProvider.GetRequiredService<ShipService>();
-        ShowWindow<ShipsWindow, Ship[]>(await shipService.GetMyShips());
-    }
-
-    internal async Task ShowContractWindow()
-    {
-        var contractService = ServiceProvider.GetRequiredService<ContractService>();
-        var contracts = await contractService.GetMyContracts();
-        ShowWindow<ContractWindow, Contract?>(contracts.Length > 0 ? contracts[0] : null);
+        var window = ServiceProvider.GetService<WarningWindow>();
+        if (window == null)
+        {
+            return;
+        }
+        window.LoadData(result);
+        _rootWindow.Children.Add(window);
+        Windows.Add(window);
+        window.Show();
     }
 
     internal void ShowGlyphWindow()
@@ -145,7 +136,7 @@ public class RootScreen : ScreenObject, IDisposable
             return;
         }
         window.LoadData(ship);
-        _windows.Add(window);
+        Windows.Add(window);
         _rootWindow.Children.Add(window);
         window.Show();
     }
@@ -154,7 +145,13 @@ public class RootScreen : ScreenObject, IDisposable
     {
         window.Hide();
         _rootWindow.Children.Remove(window);
-        _windows.Remove(window);
+        Windows.Remove(window);
         window.Dispose();
+    }
+
+    public void DoAsynchronousEventually(Func<Task> action)
+    {
+        var backgroundUpdater = ServiceProvider.GetRequiredService<BackgroundDataUpdater>();
+        backgroundUpdater?.DoAsynchronousEventually(action);
     }
 }

@@ -1,11 +1,10 @@
 ﻿using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
-using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
+using System;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace SpaceTraders.UI.Windows;
 
@@ -13,18 +12,19 @@ internal sealed class WaypointWindow : ClosableWindow, ICanLoadData<Waypoint>, I
 {
     private Waypoint? Waypoint { get; set; }
 
-    private WaypointService WaypointService { get; }
-
     private Ship[] Ships { get; set; } = [];
 
-    public WaypointWindow(RootScreen rootScreen, WaypointService waypointService)
+    public WaypointWindow(RootScreen rootScreen)
         : base(rootScreen, 45, 30)
     {
-        WaypointService = waypointService;
+        DrawContent();
     }
 
     public void LoadData(Waypoint data)
     {
+        if (Waypoint is not null && Waypoint == data)
+            return;
+
         Title = $"Waypoint {data.Symbol}";
         Waypoint = data;
         DrawContent();
@@ -32,18 +32,42 @@ internal sealed class WaypointWindow : ClosableWindow, ICanLoadData<Waypoint>, I
 
     public void LoadData(Ship[] data)
     {
-        Ships = data.Where(d => d.Navigation.WaypointSymbol == Waypoint?.Symbol).ToArray();
+        var relevantData = data.Where(d => d.Navigation.WaypointSymbol == Waypoint?.Symbol).ToArray();
+        if (Ships.All(s => s == relevantData.FirstOrDefault(d => d.Symbol == s.Symbol)) && relevantData.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
+            return;
+        Ships = relevantData;
         DrawContent();
+    }
+
+    Type ICanLoadData.DataType
+    {
+        get
+        {
+            if (Waypoint is null)
+                return typeof(Waypoint);
+            return typeof(Ship[]);
+        }
+    }
+
+    void ICanLoadData.LoadData(object data)
+    {
+        if (data is Waypoint waypoint)
+            LoadData(waypoint);
+        else if (data is Ship[] ships)
+            LoadData(ships);
+        else
+            throw new ArgumentException("Invalid data type for WaypointWindow", nameof(data));
     }
 
     private void DrawContent()
     {
-        foreach (var c in Controls.Where(c => c.Name != "CloseButton").ToList())
-        {
-            Controls.Remove(c);
-        }
+        Clean();
         if (Waypoint is null)
+        {
+            Controls.AddLabel($"Waypoint loading...", 2, 2);
+            ResizeAndRedraw();
             return;
+        }
 
         var y = 2;
         Controls.AddLabel($"Symbol: {Waypoint.Symbol}", 2, y++);
@@ -67,7 +91,7 @@ internal sealed class WaypointWindow : ClosableWindow, ICanLoadData<Waypoint>, I
             Controls.AddLabel($"Ships at this Waypoint:", 2, y++);
             foreach (var ship in Ships.OrderBy(s => s.Symbol))
             {
-                Controls.AddAsyncButton($"{ship.Symbol} ({ship.Registration.Role})", 4, y++, async () => RootScreen.ShowWindow<ShipWindow, Ship>(ship), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
+                Controls.AddButton($"{ship.Symbol} ({ship.Registration.Role})", 4, y++, (_, _) => RootScreen.ShowWindow<ShipWindow>(ship.Symbol));
             }
         }
         y++;
@@ -76,13 +100,13 @@ internal sealed class WaypointWindow : ClosableWindow, ICanLoadData<Waypoint>, I
             Controls.AddLabel($"Orbitals:", 2, y++);
             foreach (var orbital in Waypoint.Orbitals.OrderBy(w => w))
             {
-                Controls.AddAsyncButton($"{orbital})", 4, y++, async () => RootScreen.ShowWindow<WaypointWindow, Waypoint>(await WaypointService.GetWaypoint(Waypoint.SystemSymbol, orbital)), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
+                Controls.AddButton($"{orbital})", 4, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>(orbital, Waypoint.SystemSymbol));
             }
         }
         if (!string.IsNullOrEmpty(Waypoint.Orbits))
         {
             Controls.AddLabel($"Orbits:", 2, y);
-            Controls.AddAsyncButton($"{Waypoint.Orbits}", 11, y++, async () => RootScreen.ShowWindow<WaypointWindow, Waypoint>(await WaypointService.GetWaypoint(Waypoint.SystemSymbol, Waypoint.Orbits)), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
+            Controls.AddButton($"{Waypoint.Orbits}", 11, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>(Waypoint.Orbits, Waypoint.SystemSymbol));
         }
         y++;
         Controls.AddLabel($"Traits:", 2, y++);

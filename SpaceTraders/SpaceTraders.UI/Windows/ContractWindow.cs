@@ -4,28 +4,40 @@ using SpaceTraders.UI.Interfaces;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ContractWindow : ClosableWindow, ICanLoadData<Contract?>
+internal sealed class ContractWindow : ClosableWindow, ICanLoadData<Contract[]>
 {
     private Contract? Contract { get; set; }
 
     public ContractWindow(RootScreen rootScreen)
         : base(rootScreen, 45, 30)
     {
+        DrawContent();
     }
 
-    public void LoadData(Contract? data)
+    public void LoadData(Contract[] data)
     {
-        Title = $"Contract{(data != null ? $" {data.Id}" : string.Empty)}";
-        Contract = data;
+        var contract = data.Length > 0 ? data[0] : null;
+        if (Contract is not null && Contract.ContractsEqualByValue(Contract, contract))
+            return;
+
+        Title = $"Contract{(contract != null ? $" {contract.Id}" : string.Empty)}";
+        Contract = contract;
         DrawContent();
     }
 
     private void DrawContent()
     {
+        Clean();
         if (Contract is null)
         {
-            var y2 = 2;
-            Controls.AddLabel($"No contract data available.", 2, y2++);
+            if (!Loaded)
+            {
+                Controls.AddLabel($"Contract data loading...", 2, 2);
+            }
+            else
+            {
+                Controls.AddLabel($"No contract data available.", 2, 2);
+            }
             ResizeAndRedraw();
             return;
         }

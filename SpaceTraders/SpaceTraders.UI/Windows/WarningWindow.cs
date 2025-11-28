@@ -1,28 +1,58 @@
-﻿using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
+﻿using Qowaiv.Validation.Abstractions;
+using SpaceTraders.UI.Extensions;
+using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class WarningWindow : ClosableWindow, ICanLoadData<string>
+internal sealed class WarningWindow : ClosableWindow
 {
-    private string Warning { get; set; } = string.Empty;
+    private Result Data { get; set; }
 
     public WarningWindow(RootScreen rootScreen)
         : base(rootScreen, 52, 20)
     {
+        DrawContent();
     }
 
-    public void LoadData(string data)
+    public void LoadData(Result data)
     {
-        Title = $"Warning";
-        Warning = data;
+        if (data.Errors.Any())
+        {
+            Title = $"Error";
+        }
+        else if (data.Warnings.Any())
+        {
+            Title = $"Warning";
+        }
+        else if (data.Infos.Any())
+        {
+            Title = $"Information";
+        }
+        Data = data;
         DrawContent();
     }
 
     private void DrawContent()
     {
+        Clean();
+        if (Data is null)
+        {
+            return;
+        }
+
         var y = 2;
-        Controls.AddLabel($"{Warning}", 2, y++);
+        foreach (var error in Data.Errors)
+        {
+            Controls.AddLabel($"{error.Message}", 2, y++);
+        }
+        foreach (var warning in Data.Warnings)
+        {
+            Controls.AddLabel($"{warning.Message}", 2, y++);
+        }
+        foreach (var info in Data.Infos)
+        {
+            Controls.AddLabel($"{info.Message}", 2, y++);
+        }
         ResizeAndRedraw();
     }
 }

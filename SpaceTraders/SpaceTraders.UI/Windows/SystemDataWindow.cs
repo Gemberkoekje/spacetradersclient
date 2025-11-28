@@ -4,29 +4,47 @@ using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
+using System;
 using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
 internal sealed class SystemDataWindow : ClosableWindow, ICanLoadData<SystemWaypoint>, ICanLoadData<Ship[]>
 {
+    string? ICanLoadData.Symbol { get; set; }
+
     private SystemWaypoint? System { get; set; }
 
     private Ship[] Ships { get; set; } = [];
 
-    private SystemService SystemService { get; init; }
-
-    private WaypointService WaypointService { get; init; }
-
-    public SystemDataWindow(RootScreen rootScreen, SystemService systemService, WaypointService waypointService)
+    public SystemDataWindow(RootScreen rootScreen)
         : base(rootScreen, 45, 30)
     {
-        SystemService = systemService;
-        WaypointService = waypointService;
+        DrawContent();
+    }
+
+    Type ICanLoadData.DataType {
+        get {
+            if (System is null)
+                return typeof(SystemWaypoint);
+            return typeof(Ship[]);
+        }
+    }
+
+    void ICanLoadData.LoadData(object data)
+    {
+        if (data is SystemWaypoint waypoint)
+            LoadData(waypoint);
+        else if (data is Ship[] ships)
+            LoadData(ships);
+        else
+            throw new ArgumentException("Invalid data type for WaypointWindow", nameof(data));
     }
 
     public void LoadData(SystemWaypoint data)
     {
+        if (System is not null && System == data)
+            return;
         Title = $"System {data.Symbol}";
         System = data;
         DrawContent();
@@ -34,18 +52,22 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanLoadData<SystemWayp
 
     public void LoadData(Ship[] data)
     {
-        Ships = data.Where(d => d.Navigation.SystemSymbol == System.Symbol).ToArray();
+        var relevantData = data.Where(d => d.Navigation.SystemSymbol == System.Symbol).ToArray();
+        if (Ships.All(s => s == relevantData.FirstOrDefault(d => d.Symbol == s.Symbol)) && relevantData.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
+            return;
+        Ships = relevantData;
         DrawContent();
     }
 
     private void DrawContent()
     {
-        foreach (var c in Controls.Where(c => c.Name != "CloseButton").ToList())
-        {
-            Controls.Remove(c);
-        }
+        Clean();
         if (System is null)
+        {
+            Controls.AddLabel($"System loading...", 2, 2);
+            ResizeAndRedraw();
             return;
+        }
 
         var y = 2;
         Controls.AddLabel($"Symbol: {System.Symbol}", 2, y++);
@@ -56,7 +78,7 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanLoadData<SystemWayp
         Controls.AddLabel($"Position: {System.X}, {System.Y}", 2, y++);
         Controls.AddLabel($"Waypoints: {System.Waypoints.Count()}", 2, y++);
         Controls.AddLabel($"Factions: {System.Factions.Count()}", 2, y++);
-        Controls.AddAsyncButton($"Show map", 2, y++, async () => RootScreen.ShowWindow<SystemMapWindow, SystemWaypoint>(await SystemService.GetSystemAsync(System.Symbol)), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
+        Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow>(System.Symbol));
         y++;
         Controls.AddLabel($"Markets & Shipyards:", 2, y++);
         foreach (var wp in System.Waypoints.Where(w => w.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Marketplace || t.Symbol == Core.Enums.WaypointTraitSymbol.Shipyard) || Ships.Any(s => s.Navigation.WaypointSymbol == w.Symbol)).OrderBy(w => w.Symbol))
@@ -66,10 +88,10 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanLoadData<SystemWayp
             {
                 Controls.AddLabel($"{orbits.Symbol} ({orbits.Type})", 2, y++, Color.Gray);
             }
-            Controls.AddAsyncButton($"{wp.Symbol} ({(wp.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Marketplace) ? "Marketplace" : string.Empty)}{(wp.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Shipyard) ? " & Shipyard" : string.Empty)})", string.IsNullOrEmpty(wp.Orbits) ? 2 : 4, y++, async () => RootScreen.ShowWindow<WaypointWindow, Waypoint>(await WaypointService.GetWaypoint(System.Symbol, wp.Symbol)), (e) => RootScreen.ShowWindow<WarningWindow, string>(string.Join(", ", e.Message)));
+            Controls.AddButton($"{wp.Symbol} ({(wp.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Marketplace) ? "Marketplace" : string.Empty)}{(wp.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Shipyard) ? " & Shipyard" : string.Empty)})", string.IsNullOrEmpty(wp.Orbits) ? 2 : 4, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>(wp.Symbol, wp.SystemSymbol));
             foreach (var ship in Ships.Where(s => s.Navigation.WaypointSymbol == wp.Symbol).OrderBy(s => s.Symbol))
             {
-                Controls.AddButton($"{ship.Symbol} ({ship.Registration.Role})", string.IsNullOrEmpty(wp.Orbits) ? 4 : 6, y++, (_, _) => RootScreen.ShowWindow<ShipWindow, Ship>(ship), Color.Cyan);
+                Controls.AddButton($"{ship.Symbol} ({ship.Registration.Role})", string.IsNullOrEmpty(wp.Orbits) ? 4 : 6, y++, (_, _) => RootScreen.ShowWindow<ShipWindow>(ship.Symbol), Color.Cyan);
             }
         }
 
