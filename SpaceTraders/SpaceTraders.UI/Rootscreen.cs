@@ -3,11 +3,6 @@ using Qowaiv.Validation.Abstractions;
 using SadConsole;
 using SadConsole.UI;
 using SadConsole.UI.Windows;
-using SpaceTraders.Core.Loaders;
-using SpaceTraders.Core.Models.AgentModels;
-using SpaceTraders.Core.Models.ContractModels;
-using SpaceTraders.Core.Models.ShipModels;
-using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Interfaces;
 using SpaceTraders.UI.Windows;
 using System;
@@ -97,10 +92,9 @@ public class RootScreen : ScreenObject, IDisposable
         {
             return;
         }
-        if (window is ICanLoadData dataWindow)
+        if (window is ICanSetSymbols dataWindow)
         {
-            dataWindow.Symbol = symbol;
-            dataWindow.ParentSymbol = parentsymbol;
+            dataWindow.SetSymbol(symbol, parentsymbol);
         }
         _rootWindow.Children.Add(window);
         Windows.Add(window);
@@ -128,19 +122,6 @@ public class RootScreen : ScreenObject, IDisposable
             _glyphWindow.Show();
     }
 
-    internal void ShowShipWindow(Ship ship)
-    {
-        var window = ServiceProvider.GetService<ShipWindow>();
-        if (window == null)
-        {
-            return;
-        }
-        window.LoadData(ship);
-        Windows.Add(window);
-        _rootWindow.Children.Add(window);
-        window.Show();
-    }
-
     internal void HideAndDestroyWindow(Window window)
     {
         window.Hide();
@@ -149,9 +130,9 @@ public class RootScreen : ScreenObject, IDisposable
         window.Dispose();
     }
 
-    public void DoAsynchronousEventually(Func<Task> action)
+    public void ScheduleCommand(Func<Task> command)
     {
         var backgroundUpdater = ServiceProvider.GetRequiredService<BackgroundDataUpdater>();
-        backgroundUpdater?.DoAsynchronousEventually(action);
+        backgroundUpdater?.ScheduleCommand(command);
     }
 }

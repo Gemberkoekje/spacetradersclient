@@ -1,17 +1,20 @@
 ﻿using SpaceTraders.Core.Models.ContractModels;
+using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
+using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ContractWindow : ClosableWindow, ICanLoadData<Contract[]>
+internal sealed class ContractWindow : ClosableWindow
 {
     private Contract? Contract { get; set; }
 
-    public ContractWindow(RootScreen rootScreen)
+    public ContractWindow(RootScreen rootScreen, ContractService contractService)
         : base(rootScreen, 45, 30)
     {
-        DrawContent();
+        contractService.Updated += LoadData;
+        LoadData(contractService.GetContracts().ToArray());
     }
 
     public void LoadData(Contract[] data)

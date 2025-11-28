@@ -1,61 +1,74 @@
-﻿using SadRogue.Primitives;
+﻿using Microsoft.Xna.Framework.Media;
+using SadRogue.Primitives;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using System;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class SystemDataWindow : ClosableWindow, ICanLoadData<SystemWaypoint>, ICanLoadData<Ship[]>
+internal sealed class SystemDataWindow : ClosableWindow, ICanSetSymbols
 {
-    string? ICanLoadData.Symbol { get; set; }
+    private string Symbol { get; set; } = string.Empty;
 
     private SystemWaypoint? System { get; set; }
+    private Waypoint[] Waypoints { get; set; } = [];
 
     private Ship[] Ships { get; set; } = [];
 
-    public SystemDataWindow(RootScreen rootScreen)
+    private readonly ShipService ShipService;
+    private readonly SystemService SystemService;
+    private readonly WaypointService WaypointService;
+
+    public SystemDataWindow(RootScreen rootScreen, ShipService shipService, SystemService systemService, WaypointService waypointService)
         : base(rootScreen, 45, 30)
     {
+        shipService.Updated += LoadData;
+        systemService.Updated += LoadData;
+        waypointService.Updated += LoadData;
+        ShipService = shipService;
+        SystemService = systemService;
+        WaypointService = waypointService;
         DrawContent();
     }
 
-    Type ICanLoadData.DataType {
-        get {
-            if (System is null)
-                return typeof(SystemWaypoint);
-            return typeof(Ship[]);
-        }
+    public void SetSymbol(string symbol, string? _)
+    {
+        Symbol = symbol;
+        LoadData(SystemService.GetSystems().ToArray());
+        LoadData(WaypointService.GetWaypoints());
+        LoadData(ShipService.GetShips().ToArray());
     }
 
-    void ICanLoadData.LoadData(object data)
+    public void LoadData(SystemWaypoint[] data)
     {
-        if (data is SystemWaypoint waypoint)
-            LoadData(waypoint);
-        else if (data is Ship[] ships)
-            LoadData(ships);
-        else
-            throw new ArgumentException("Invalid data type for WaypointWindow", nameof(data));
-    }
-
-    public void LoadData(SystemWaypoint data)
-    {
-        if (System is not null && System == data)
+        var system = data.FirstOrDefault(d => d.Symbol == Symbol);
+        if (System is not null && System == system)
             return;
-        Title = $"System {data.Symbol}";
-        System = data;
+        Title = $"System {system.Symbol}";
+        System = system;
         DrawContent();
     }
 
-    public void LoadData(Ship[] data)
+    public Task LoadData(Ship[] data)
     {
         var relevantData = data.Where(d => d.Navigation.SystemSymbol == System.Symbol).ToArray();
         if (Ships.All(s => s == relevantData.FirstOrDefault(d => d.Symbol == s.Symbol)) && relevantData.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
-            return;
+            return Task.CompletedTask;
         Ships = relevantData;
+        DrawContent();
+        return Task.CompletedTask;
+    }
+
+    public void LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
+    {
+        var waypoints = data.GetValueOrDefault(Symbol);
+        Waypoints = waypoints.ToArray();
         DrawContent();
     }
 
@@ -76,14 +89,14 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanLoadData<SystemWayp
         Controls.AddLabel($"Sector: {System.SectorSymbol}", 2, y++);
         Controls.AddLabel($"Type: {System.SystemType}", 2, y++);
         Controls.AddLabel($"Position: {System.X}, {System.Y}", 2, y++);
-        Controls.AddLabel($"Waypoints: {System.Waypoints.Count()}", 2, y++);
+        Controls.AddLabel($"Waypoints: {Waypoints.Count()}", 2, y++);
         Controls.AddLabel($"Factions: {System.Factions.Count()}", 2, y++);
         Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow>(System.Symbol));
         y++;
         Controls.AddLabel($"Markets & Shipyards:", 2, y++);
-        foreach (var wp in System.Waypoints.Where(w => w.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Marketplace || t.Symbol == Core.Enums.WaypointTraitSymbol.Shipyard) || Ships.Any(s => s.Navigation.WaypointSymbol == w.Symbol)).OrderBy(w => w.Symbol))
+        foreach (var wp in Waypoints.Where(w => w.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Marketplace || t.Symbol == Core.Enums.WaypointTraitSymbol.Shipyard) || Ships.Any(s => s.Navigation.WaypointSymbol == w.Symbol)).OrderBy(w => w.Symbol))
         {
-            var orbits = string.IsNullOrEmpty(wp.Orbits) ? null : System.Waypoints.FirstOrDefault(w => w.Symbol == wp.Orbits);
+            var orbits = string.IsNullOrEmpty(wp.Orbits) ? null : Waypoints.FirstOrDefault(w => w.Symbol == wp.Orbits);
             if (orbits is not null && !orbits.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Marketplace || t.Symbol == Core.Enums.WaypointTraitSymbol.Shipyard))
             {
                 Controls.AddLabel($"{orbits.Symbol} ({orbits.Type})", 2, y++, Color.Gray);

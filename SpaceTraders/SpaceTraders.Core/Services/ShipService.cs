@@ -1,12 +1,15 @@
+using Qowaiv;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.ShipModels;
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SpaceTraders.Core.Loaders;
+namespace SpaceTraders.Core.Services;
 
 /// <summary>
 /// Provides higher level ship retrieval operations backed by the generated <c>SpaceTradersClient</c>.
@@ -17,26 +20,45 @@ namespace SpaceTraders.Core.Loaders;
 /// </remarks>
 public sealed class ShipService(Client.SpaceTradersService service)
 {
+    private ImmutableList<Ship> Ships { get; set; } = [];
 
-    public async Task<Ship[]> GetMyShips()
+    public event Func<Ship[], Task>? Updated;
+    
+    public event Action<DateTimeOffset>? Arrived;
+
+    public async Task Initialize()
     {
         var ships = await service.GetAllPagesAsync(
             (client, page, limit, ct) => client.GetMyShipsAsync(page, limit, ct),
-            page => page.Data,
-            "GetMyShipsAsync",
-            TimeSpan.FromSeconds(60));
-        return [.. ships.Value.Select(MapShip)];
+            page => page.Data);
+        Update(ships.Value.Select(MapShip));
     }
-    /// <summary>
-    /// Retrieves a ship by symbol and maps the client response into a domain <see cref="Ship"/> instance.
-    /// </summary>
-    /// <param name="symbol">The unique ship symbol to fetch (e.g. agent prefix plus identifier).</param>
-    /// <returns>An awaitable task producing the hydrated <see cref="Ship"/>.</returns>
-    /// <exception cref="Client.ApiException">Thrown when the API request fails.</exception>
-    public async Task<Ship> GetShip(string symbol)
+
+    private void Update(IEnumerable<Ship> ships)
     {
-        var ship = await service.EnqueueCachedAsync((client, ct) => client.GetMyShipAsync(symbol, ct), $"GetMyShipAsync_{symbol}", TimeSpan.FromSeconds(60));
-        return MapShip(ship.Value.Data);
+        Ships = ships.ToImmutableList();
+        foreach (var ship in Ships.Where(s => s.Navigation.Route.ArrivalTime > Clock.UtcNow()))
+        {
+            Arrived?.Invoke(ship.Navigation.Route.ArrivalTime);
+        }
+        Updated?.Invoke(ships.ToArray());
+    }
+
+    public async Task Arrive()
+    {
+        if (Ships.IsEmpty)
+            return;
+        foreach (var ship in Ships.Where(c => c.Navigation.Route.ArrivalTime < Clock.UtcNow().AddSeconds(-1)))
+        {
+            var update = await service.EnqueueAsync((client, ct) => client.GetMyShipAsync(ship.Symbol, ct));
+            var ships = Ships.Remove(ship).Add(MapShip(update.Value.Data));
+            Update(ships);
+        }
+    }
+
+    public ImmutableList<Ship> GetShips()
+    {
+        return Ships;
     }
 
     private static Ship MapShip(Client.Ship ship)

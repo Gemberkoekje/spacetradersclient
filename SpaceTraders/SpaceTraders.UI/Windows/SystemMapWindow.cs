@@ -1,36 +1,64 @@
 ﻿using SadRogue.Primitives;
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.SystemModels;
+using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using System;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class SystemMapWindow : ClosableWindow, ICanLoadData<SystemWaypoint>
+internal sealed class SystemMapWindow : ClosableWindow, ICanSetSymbols
 {
-    private SystemWaypoint? System { get; set; }
+    private string Symbol { get; set; } = string.Empty;
 
-    public SystemMapWindow(RootScreen rootScreen)
+    private SystemWaypoint? System { get; set; }
+    private Waypoint[] Waypoints { get; set; } = [];
+
+    private readonly SystemService SystemService;
+    private readonly WaypointService WaypointService;
+
+    public SystemMapWindow(RootScreen rootScreen, SystemService systemService, WaypointService waypointService)
         : base(rootScreen, 45, 30)
     {
+        systemService.Updated += LoadData;
+        waypointService.Updated += LoadData;
+        SystemService = systemService;
+        WaypointService = waypointService;
         DrawContent();
     }
 
-    public void LoadData(SystemWaypoint data)
+    public void SetSymbol(string symbol, string? _)
     {
-        if (System is not null && System == data)
+        Symbol = symbol;
+        LoadData(SystemService.GetSystems().ToArray());
+        LoadData(WaypointService.GetWaypoints());
+        DrawContent();
+    }
+
+    public void LoadData(SystemWaypoint[] data)
+    {
+        var system = data.FirstOrDefault(d => d.Symbol == Symbol);
+        if (System is not null && System == system)
             return;
-        Title = $"System {data.Symbol}";
-        System = data;
+        Title = $"System {system.Symbol}";
+        System = system;
+        DrawContent();
+    }
+
+    public void LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
+    {
+        var waypoints = data.GetValueOrDefault(Symbol);
+        Waypoints = waypoints.ToArray();
         DrawContent();
     }
 
     private void DrawContent()
     {
         Clean();
-        if (System is null)
+        if (System is null || !Waypoints.Any())
         {
             Controls.AddLabel($"System loading...", 2, 2);
             ResizeAndRedraw();
@@ -38,10 +66,10 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanLoadData<SystemWaypo
         }
 
         // Compute extents.
-        int minX = System.Waypoints.Min(w => w.X);
-        int minY = System.Waypoints.Min(w => w.Y);
-        int maxX = System.Waypoints.Max(w => w.X);
-        int maxY = System.Waypoints.Max(w => w.Y);
+        int minX = Waypoints.Min(w => w.X);
+        int minY = Waypoints.Min(w => w.Y);
+        int maxX = Waypoints.Max(w => w.X);
+        int maxY = Waypoints.Max(w => w.Y);
 
         int desiredWidth = (int)(50.0 * ((float)SadConsole.Game.Instance.DefaultFont.GlyphHeight / (float)SadConsole.Game.Instance.DefaultFont.GlyphWidth));
         int desiredHeight = 50;
@@ -65,7 +93,7 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanLoadData<SystemWaypo
         if (singleX) offsetX = desiredWidth / 2f;
         if (singleY) offsetY = desiredHeight / 2f;
 
-        foreach (var waypoint in System.Waypoints.Where(w => string.IsNullOrEmpty(w.Orbits)))
+        foreach (var waypoint in Waypoints.Where(w => string.IsNullOrEmpty(w.Orbits)))
         {
             float translatedX = waypoint.X - minX;
             float translatedY = waypoint.Y - minY;

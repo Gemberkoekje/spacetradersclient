@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using SadConsole;
 using SadConsole.Configuration;
 using SpaceTraders.Client;
-using SpaceTraders.Core.Loaders;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI;
 using SpaceTraders.UI.Windows;
@@ -24,12 +23,13 @@ using var host = Host.CreateDefaultBuilder(args)
         });
         // RootScreen currently has a parameterless ctor, register for potential future DI.
         services.AddSingleton<RootScreen>((s) => new RootScreen(s));
-        services.AddTransient<AgentService>();
-        services.AddTransient<ShipService>();
-        services.AddTransient<SystemService>();
+        services.AddSingleton<AgentService>();
+        services.AddSingleton<ShipService>();
+        services.AddSingleton<SystemService>();
         services.AddSingleton<SpaceTradersService>();
         services.AddSingleton<ContractService>();
         services.AddSingleton<WaypointService>();
+
         services.AddTransient<AgentWindow>();
         services.AddTransient<ContractWindow>();
         services.AddTransient<NavigationWindow>();
@@ -41,7 +41,9 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<WarningWindow>();
         services.AddTransient<WaypointWindow>();
         services.AddTransient<StarMapWindow>();
+
         services.AddSingleton<BackgroundDataUpdater>();
+        services.AddSingleton<Scheduler>();
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<BackgroundDataUpdater>());
     })
     .Build();

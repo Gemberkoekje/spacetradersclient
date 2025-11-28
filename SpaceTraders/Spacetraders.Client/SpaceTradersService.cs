@@ -140,17 +140,6 @@ public sealed class SpaceTradersService(
     private int _started;
     private Task? _processingLoop;
 
-    // Simple in-memory cache for results
-    private sealed class CacheItem(object value, Type type, DateTimeOffset expiresAt)
-    {
-        public object Value { get; } = value;
-        public Type Type { get; } = type;
-        public DateTimeOffset ExpiresAt { get; } = expiresAt;
-        public bool IsExpired => DateTimeOffset.UtcNow >= ExpiresAt;
-    }
-
-    private readonly ConcurrentDictionary<string, CacheItem> _cache = new();
-
     public Task<Result<T>> EnqueueAsync<T>(
         Func<SpaceTradersClient, CancellationToken, Task<T>> operation,
         bool priority = false,
@@ -171,52 +160,6 @@ public sealed class SpaceTradersService(
         }
 
         return tcs.Task;
-    }
-
-    public void InvalidateCache(string cacheKey)
-    {
-        if (string.IsNullOrWhiteSpace(cacheKey))
-        {
-            return;
-        }
-        _cache.Keys.Where(c => c.StartsWith(cacheKey)).ToList().ForEach(c => _cache.TryRemove(c, out _));
-    }
-
-    // Cached variant: returns cached result by cacheKey until ttl expires.
-    public Task<Result<T>> EnqueueCachedAsync<T>(
-        Func<SpaceTradersClient, CancellationToken, Task<T>> operation,
-        string cacheKey,
-        TimeSpan ttl,
-        bool priority = false,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(cacheKey) || ttl <= TimeSpan.Zero)
-        {
-            return EnqueueAsync(operation, priority, cancellationToken);
-        }
-
-        if (_cache.TryGetValue(cacheKey, out var item))
-        {
-            if (!item.IsExpired && item.Type == typeof(T))
-            {
-                return Task.FromResult((Result<T>)item.Value);
-            }
-            else
-            {
-                _cache.TryRemove(cacheKey, out _);
-            }
-        }
-
-        var task = EnqueueAsync(operation, priority, cancellationToken);
-        _ = task.ContinueWith(t =>
-        {
-            if (t.Status == TaskStatus.RanToCompletion)
-            {
-                var expires = DateTimeOffset.UtcNow.Add(ttl);
-                _cache[cacheKey] = new CacheItem(t.Result!, typeof(T), expires);
-            }
-        }, TaskScheduler.Default);
-        return task;
     }
 
     private void EnsureStarted()
@@ -300,8 +243,5 @@ public sealed class SpaceTradersService(
 
         _limiter.Dispose();
         _cts.Dispose();
-
-        // Clear cache on dispose
-        _cache.Clear();
     }
 }

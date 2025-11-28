@@ -1,4 +1,5 @@
-﻿using Qowaiv.Validation.Abstractions;
+﻿using Qowaiv;
+using Qowaiv.Validation.Abstractions;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.ContractModels;
@@ -13,16 +14,48 @@ namespace SpaceTraders.Core.Services;
 
 public sealed class ContractService(Client.SpaceTradersService service)
 {
-    public async Task<Contract[]> GetMyContracts()
+    private ImmutableList<Contract> Contracts { get; set; } = [];
+
+    public event Action<Contract[]>? Updated;
+
+    public event Action<DateTimeOffset>? Expired;
+
+    public async Task Initialize()
     {
         var clientContracts = await service.GetAllPagesAsync(
             (client, page, limit, ct) => client.GetContractsAsync(page, limit, ct),
-            page => page.Data,
-            "GetContractsAsync",
-            TimeSpan.FromSeconds(60));
+            page => page.Data);
+        Update(clientContracts.Value.Select(MapContract));
+    }
 
-        var result = clientContracts.Value.Select(MapContract).ToArray();
-        return result;
+    private void Update(IEnumerable<Contract> contracts)
+    {
+        Contracts = contracts.ToImmutableList();
+        foreach (var contract in Contracts)
+        {
+            Expired?.Invoke(contract.DeadlineToAccept);
+            Expired?.Invoke(contract.Terms.Deadline);
+        }
+        Updated?.Invoke(Contracts.ToArray());
+    }
+
+    public void Expire()
+    {
+        if (Contracts.IsEmpty)
+            return;
+        foreach (var contract in Contracts.Where(c => !c.Accepted && c.DeadlineToAccept < Clock.UtcNow().AddSeconds(-1)))
+        {
+            Update(Contracts.Remove(contract));
+        }
+        foreach (var contract in Contracts.Where(c => c.Terms.Deadline < Clock.UtcNow().AddSeconds(-1)))
+        {
+            Update(Contracts.Remove(contract));
+        }
+    }
+
+    public ImmutableList<Contract> GetContracts()
+    {
+        return Contracts;
     }
 
     private static Contract MapContract(Client.Contract contract)
@@ -58,8 +91,7 @@ public sealed class ContractService(Client.SpaceTradersService service)
         var result = await service.EnqueueAsync((client, ct) => client.NegotiateContractAsync(shipSymbol, ct), true);
         if (result.IsValid)
         {
-            service.InvalidateCache("GetContractsAsync");
-            return MapContract(result.Value.Data.Contract);
+            Update(Contracts.Add(MapContract(result.Value.Data.Contract)));
         }
         return Result.WithMessages<Contract>(result.Messages);
     }

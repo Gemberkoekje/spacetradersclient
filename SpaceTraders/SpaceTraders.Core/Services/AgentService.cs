@@ -1,24 +1,45 @@
-﻿using SpaceTraders.Core.Extensions;
+﻿using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.AgentModels;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.Core.Services;
 
 public sealed class AgentService(Client.SpaceTradersService service)
 {
-    public async Task<Agent> GetAgent(string? agentSymbol = null)
-    {
-        if (agentSymbol == null)
-        {
-            var response = await service.EnqueueCachedAsync((client, ct) => client.GetMyAgentAsync(ct), "GetMyAgentAsync", TimeSpan.FromSeconds(10));
-            return response.Value.Data.Convert();
 
-        }
-        else
+    private Agent? Agent { get; set; }
+
+    public event Action<Agent>? Updated;
+
+
+    public async Task Initialize()
+    {
+        var response = await service.EnqueueAsync((client, ct) => client.GetMyAgentAsync(ct));
+        Update(MapAgent(response.Value.Data));
+    }
+
+    private void Update(Agent agent)
+    {
+        Agent = agent;
+        Updated?.Invoke(Agent);
+    }
+
+    public Agent? GetAgent()
+    {
+       return Agent;
+    }
+
+    private Agent MapAgent(Client.Agent agent)
+    {
+        return new Agent
         {
-            var response = await service.EnqueueCachedAsync((client, ct) => client.GetAgentAsync(agentSymbol, ct), $"GetAgentAsync_{agentSymbol}", TimeSpan.FromSeconds(10));
-            return response.Value.Data.Convert();
-        }
+            Symbol = agent.Symbol,
+            Headquarters = agent.Headquarters,
+            Credits = agent.Credits,
+            StartingFaction = agent.StartingFaction,
+            ShipCount = agent.ShipCount,
+        };
     }
 }

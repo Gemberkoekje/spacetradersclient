@@ -1,62 +1,67 @@
 ﻿using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
+using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using System;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class WaypointWindow : ClosableWindow, ICanLoadData<Waypoint>, ICanLoadData<Ship[]>
+internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
 {
+    private string Symbol { get; set; } = string.Empty;
+
+    private string ParentSymbol { get; set; } = string.Empty;
+
     private Waypoint? Waypoint { get; set; }
 
     private Ship[] Ships { get; set; } = [];
 
-    public WaypointWindow(RootScreen rootScreen)
+    private WaypointService WaypointService { get; init; }
+    private ShipService ShipService { get; init; }
+
+    public WaypointWindow(RootScreen rootScreen, WaypointService waypointService, ShipService shipService)
         : base(rootScreen, 45, 30)
     {
+        waypointService.Updated += LoadData;
+        shipService.Updated += LoadData;
+        WaypointService = waypointService;
+        ShipService = shipService;
         DrawContent();
     }
 
-    public void LoadData(Waypoint data)
+    public void SetSymbol(string symbol, string? parentSymbol)
     {
-        if (Waypoint is not null && Waypoint == data)
+        Symbol = symbol;
+        ParentSymbol = parentSymbol;
+        LoadData(WaypointService.GetWaypoints());
+        LoadData(ShipService.GetShips().ToArray());
+    }
+
+    public void LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
+    {
+        var waypoints = data.GetValueOrDefault(ParentSymbol);
+        var waypoint = waypoints?.FirstOrDefault(d => d.Symbol == Symbol);
+        if (Waypoint is not null && Waypoint == waypoint)
             return;
 
-        Title = $"Waypoint {data.Symbol}";
-        Waypoint = data;
+        Title = $"Waypoint {waypoint.Symbol}";
+        Waypoint = waypoint;
         DrawContent();
     }
 
-    public void LoadData(Ship[] data)
+    public Task LoadData(Ship[] data)
     {
         var relevantData = data.Where(d => d.Navigation.WaypointSymbol == Waypoint?.Symbol).ToArray();
         if (Ships.All(s => s == relevantData.FirstOrDefault(d => d.Symbol == s.Symbol)) && relevantData.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
-            return;
+            return Task.CompletedTask;
         Ships = relevantData;
         DrawContent();
-    }
-
-    Type ICanLoadData.DataType
-    {
-        get
-        {
-            if (Waypoint is null)
-                return typeof(Waypoint);
-            return typeof(Ship[]);
-        }
-    }
-
-    void ICanLoadData.LoadData(object data)
-    {
-        if (data is Waypoint waypoint)
-            LoadData(waypoint);
-        else if (data is Ship[] ships)
-            LoadData(ships);
-        else
-            throw new ArgumentException("Invalid data type for WaypointWindow", nameof(data));
+        return Task.CompletedTask;
     }
 
     private void DrawContent()
@@ -100,7 +105,7 @@ internal sealed class WaypointWindow : ClosableWindow, ICanLoadData<Waypoint>, I
             Controls.AddLabel($"Orbitals:", 2, y++);
             foreach (var orbital in Waypoint.Orbitals.OrderBy(w => w))
             {
-                Controls.AddButton($"{orbital})", 4, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>(orbital, Waypoint.SystemSymbol));
+                Controls.AddButton($"{orbital}", 4, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>(orbital, Waypoint.SystemSymbol));
             }
         }
         if (!string.IsNullOrEmpty(Waypoint.Orbits))

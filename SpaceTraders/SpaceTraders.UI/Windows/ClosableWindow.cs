@@ -6,10 +6,6 @@ namespace SpaceTraders.UI.Windows;
 
 public class ClosableWindow : Window
 {
-    public string? ParentSymbol { get; set; } = null;
-
-    public string? Symbol { get; set; } = null;
-
     protected RootScreen RootScreen { get; init; }
 
     protected bool Loaded { get; set; } = false;

@@ -3,6 +3,7 @@ using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.SystemModels;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,35 +12,33 @@ namespace SpaceTraders.Core.Services;
 
 public sealed class WaypointService(Client.SpaceTradersService service)
 {
-    private List<Waypoint> Waypoints = [];
+    private ImmutableDictionary<string, ImmutableList<Waypoint>> Waypoints { get; set; } = [];
 
-    public async Task<Waypoint[]> GetWaypoints(string systemSymbol)
+    public event Action<ImmutableDictionary<string, ImmutableList<Waypoint>>>? Updated;
+
+    public async Task Initialize()
     {
-        if(Waypoints.Count > 0)
-        {
-            return Waypoints.ToArray();
-        }
-
-        var systemWaypoints = await service.GetAllPagesAsync(
-            (client, page, limit, ct) => client.GetSystemWaypointsAsync(page, limit, null, null, systemSymbol, ct),
-            page => page.Data,
-            $"GetWaypoints_null_null_{systemSymbol}",
-            TimeSpan.FromDays(1));
-        Waypoints = [.. systemWaypoints.Value.Select(w => MapWaypoint(w))];
-        return Waypoints.ToArray();
     }
 
-    public async Task<Waypoint> GetWaypoint(string systemSymbol, string symbol)
+    private void Update(ImmutableDictionary<string, ImmutableList<Waypoint>> waypoints)
     {
-        if (Waypoints.FirstOrDefault(w => w.SystemSymbol == systemSymbol && w.Symbol == symbol) is Waypoint waypoint)
-        {
-            return waypoint;
-        }
+        Waypoints = waypoints;
+        Updated?.Invoke(waypoints);
+    }
 
-        var response = await service.EnqueueCachedAsync((client, ct) => client.GetWaypointAsync(systemSymbol, symbol, ct), $"GetWaypointAsync_{systemSymbol}_{symbol}", TimeSpan.FromDays(1));
-        var newwaypoint = MapWaypoint(response.Value.Data);
-        Waypoints.Add(newwaypoint);
-        return newwaypoint;
+    public async Task AddSystem(string symbol)
+    {
+        var systemWaypoints = await service.GetAllPagesAsync(
+            (client, page, limit, ct) => client.GetSystemWaypointsAsync(page, limit, null, null, symbol, ct),
+            page => page.Data);
+        var waypoints = systemWaypoints.Value.Select(w => MapWaypoint(w));
+        var newDict = Waypoints.SetItem(symbol, waypoints.ToImmutableList());
+        Update(newDict);
+    }
+
+    public ImmutableDictionary<string, ImmutableList<Waypoint>> GetWaypoints()
+    {
+        return Waypoints;
     }
 
     private static Waypoint MapWaypoint(Client.Waypoint w)

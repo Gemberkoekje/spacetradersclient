@@ -14,8 +14,6 @@ public static class ListHelper
         this SpaceTradersService service,
         Func<SpaceTradersClient, int /*page*/, int /*limit*/, CancellationToken, Task<TPage>> fetchPage,
         Func<TPage, ICollection<TItem>> getData,
-        string cacheKeyPrefix,
-        TimeSpan ttl,
         int startPage = 1,
         int limit = 20,
         CancellationToken ct = default)
@@ -25,11 +23,8 @@ public static class ListHelper
 
         while (true)
         {
-            var cacheKey = $"{cacheKeyPrefix}_{page}_{limit}";
-            var result = await service.EnqueueCachedAsync(
+            var result = await service.EnqueueAsync(
                 (client, token) => fetchPage(client, page, limit, token),
-                cacheKey,
-                ttl,
                 priority: false,
                 cancellationToken: ct);
 
@@ -38,7 +33,7 @@ public static class ListHelper
                 return Result.WithMessages<List<TItem>>(ValidationMessage.Error("Result is null"));
             }
 
-            if (result is null || !result.IsValid)
+            if (!result.IsValid)
             {
                 return Result.WithMessages<List<TItem>>(result.Messages);
             }

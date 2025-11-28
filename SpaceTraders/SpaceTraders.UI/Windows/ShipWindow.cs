@@ -2,32 +2,44 @@
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ShipWindow : ClosableWindow, ICanLoadData<Ship>
+internal sealed class ShipWindow : ClosableWindow, ICanSetSymbols
 {
-    string? ICanLoadData.Symbol { get; set; }
+    private string Symbol { get; set; } = string.Empty;
 
     private Ship? Ship { get; set; }
 
     private ContractService ContractService { get; init; }
 
-    public ShipWindow(RootScreen rootScreen, ContractService contractService)
+    private ShipService ShipService { get; init; }
+
+    public ShipWindow(RootScreen rootScreen, ContractService contractService, ShipService shipService)
         : base(rootScreen, 52, 20)
     {
         ContractService = contractService;
+        ShipService = shipService;
+        shipService.Updated += LoadData;
         DrawContent();
     }
 
-    public void LoadData(Ship data)
+    public void SetSymbol(string symbol, string? _)
     {
-        if (Ship is not null && Ship == data)
+        Symbol = symbol;
+        LoadData(ShipService.GetShips().ToArray());
+    }
+
+    public async Task LoadData(Ship[] data)
+    {
+        var ship = data.First(s => s.Symbol == Symbol);
+        if (Ship is not null && Ship == ship)
             return;
 
-        Title = $"Ship {data.Symbol}";
-        Ship = data;
+        Title = $"Ship {ship.Symbol}";
+        Ship = ship;
         DrawContent();
     }
 
@@ -47,7 +59,7 @@ internal sealed class ShipWindow : ClosableWindow, ICanLoadData<Ship>
         Controls.AddLabel($"Role: {Ship.Registration.Role}", 2, y++);
         Controls.AddLabel($"Navigation:", 2, y);
         Controls.AddButton($"{Ship.Navigation.Status} {(Ship.Navigation.Status == Core.Enums.ShipNavStatus.InTransit ? "to" : "at")} {Ship.Navigation.Route.Destination.Symbol}{(Ship.Navigation.Status == Core.Enums.ShipNavStatus.InTransit ? $" until {Ship.Navigation.Route.ArrivalTime}" : "")}", 15, y++, (_, _) => RootScreen.ShowWindow<NavigationWindow>(Ship.Symbol));
-        Controls.AddButton($"Negotiate new contract", 2, y++, (_, _) => RootScreen.DoAsynchronousEventually(NegotiateNewContract));
+        Controls.AddButton($"Negotiate new contract", 2, y++, (_, _) => RootScreen.ScheduleCommand(NegotiateNewContract));
         ResizeAndRedraw();
     }
 

@@ -1,6 +1,7 @@
 ﻿using SadRogue.Primitives;
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.SystemModels;
+using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using System;
@@ -9,20 +10,21 @@ using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class StarMapWindow : ClosableWindow, ICanLoadData<SystemWaypoint>
+internal sealed class StarMapWindow : ClosableWindow
 {
     private List<SystemWaypoint> Systems { get; set; } = [];
 
-    public StarMapWindow(RootScreen rootScreen)
+    public StarMapWindow(RootScreen rootScreen, SystemService systemService)
         : base(rootScreen, 45, 30)
     {
-        DrawContent();
+        systemService.Updated += LoadData;
+        LoadData(systemService.GetSystems().ToArray());
     }
 
-    public void LoadData(SystemWaypoint data)
+    public void LoadData(SystemWaypoint[] data)
     {
         Title = $"Starmap";
-        Systems.Add(data);
+        Systems.AddRange(data);
         DrawContent();
     }
 

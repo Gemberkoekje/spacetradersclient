@@ -1,17 +1,18 @@
 using SpaceTraders.Core.Models.AgentModels;
+using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 
 namespace SpaceTraders.UI.Windows;
 
-public sealed class AgentWindow : ClosableWindow, ICanLoadData<Agent>
+public sealed class AgentWindow : ClosableWindow
 {
     private Agent? _agent { get; set; }
 
-    public AgentWindow(RootScreen rootScreen)
+    public AgentWindow(RootScreen rootScreen, AgentService agentService)
         : base(rootScreen, 52, 11)
     {
-        DrawContent();
+        agentService.Updated += LoadData;
+        LoadData(agentService.GetAgent());
     }
 
     public void LoadData(Agent data)
