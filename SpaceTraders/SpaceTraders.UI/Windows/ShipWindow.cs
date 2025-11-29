@@ -38,7 +38,7 @@ internal sealed class ShipWindow : ClosableWindow, ICanSetSymbols
         if (Ship is not null && Ship == ship)
             return;
 
-        Title = $"Ship {ship.Symbol}";
+        Title = $"Ship {Symbol}";
         Ship = ship;
         DrawContent();
     }

@@ -69,12 +69,12 @@ public sealed class ShipService(Client.SpaceTradersService service)
             Symbol = ship.Symbol,
             Registration = MapRegistration(ship.Registration),
             Navigation = MapNavigation(ship.Nav),
-            Crew = MapCrew(ship.Crew),
-            Frame = MapFrame(ship.Frame),
-            Reactor = MapReactor(ship.Reactor),
-            Engine = MapEngine(ship.Engine),
-            Modules = MapModules(ship.Modules),
-            Mounts = MapMounts(ship.Mounts),
+            Crew = Mapper.MapCrew(ship.Crew),
+            Frame = Mapper.MapFrame(ship.Frame),
+            Reactor = Mapper.MapReactor(ship.Reactor),
+            Engine = Mapper.MapEngine(ship.Engine),
+            Modules = Mapper.MapModules(ship.Modules),
+            Mounts = Mapper.MapMounts(ship.Mounts),
             Cargo = MapCargo(ship.Cargo),
             Fuel = MapFuel(ship.Fuel),
             Cooldown = MapCooldown(ship.Cooldown),
@@ -136,99 +136,6 @@ public sealed class ShipService(Client.SpaceTradersService service)
         };
     }
 
-    private static ImmutableList<Mount> MapMounts(ICollection<Client.ShipMount> mounts)
-    {
-        return mounts.Select(MapMount).ToImmutableList();
-    }
-
-    private static Mount MapMount(Client.ShipMount m)
-    {
-        return new Mount()
-        {
-            Symbol = m.Symbol.Convert<Client.ShipMountSymbol, MountSymbol>(),
-            Name = m.Name,
-            Description = m.Description,
-            Strength = m.Strength,
-            Deposits = m.Deposits != null ? m.Deposits.Select(d => d.Convert<Client.Deposits, Deposits>()).ToImmutableHashSet() : ImmutableHashSet<Deposits>.Empty,
-            Requirements = MapRequirements(m.Requirements),
-        };
-    }
-
-    private static ImmutableList<Module> MapModules(ICollection<Client.ShipModule> modules)
-    {
-        return modules.Select(MapModule).ToImmutableList();
-    }
-
-    private static Module MapModule(Client.ShipModule m)
-    {
-        return new Module()
-        {
-            Symbol = m.Symbol.Convert<Client.ShipModuleSymbol, ModuleSymbol>(),
-            Name = m.Name,
-            Description = m.Description,
-            Capacity = m.Capacity,
-            Range = m.Range,
-            Requirements = MapRequirements(m.Requirements),
-        };
-    }
-
-    private static Engine MapEngine(Client.ShipEngine engine)
-    {
-        return new()
-        {
-            Symbol = engine.Symbol.Convert<Client.ShipEngineSymbol, EngineSymbol>(),
-            Name = engine.Name,
-            Description = engine.Description,
-            Speed = engine.Speed,
-            Condition = engine.Condition,
-            Integrity = engine.Integrity,
-            Requirements = MapRequirements(engine.Requirements),
-            Quality = engine.Quality,
-        };
-    }
-
-    private static Reactor MapReactor(Client.ShipReactor reactor)
-    {
-        return new()
-        {
-            Symbol = reactor.Symbol.Convert<Client.ShipReactorSymbol, ReactorSymbol>(),
-            Name = reactor.Name,
-            Description = reactor.Description,
-            PowerOutput = reactor.PowerOutput,
-            Condition = reactor.Condition,
-            Integrity = reactor.Integrity,
-            Requirements = MapRequirements(reactor.Requirements),
-            Quality = reactor.Quality,
-        };
-    }
-
-    private static Frame MapFrame(Client.ShipFrame frame)
-    {
-        return new()
-        {
-            Symbol = frame.Symbol.Convert<Client.ShipFrameSymbol, FrameSymbol>(),
-            Name = frame.Name,
-            Description = frame.Description,
-            ModuleSlots = frame.ModuleSlots,
-            MountingPoints = frame.MountingPoints,
-            FuelCapacity = frame.FuelCapacity,
-            Condition = frame.Condition,
-            Integrity = frame.Integrity,
-            Requirements = MapRequirements(frame.Requirements),
-        };
-    }
-
-    private static Crew MapCrew(Client.ShipCrew crew)
-    {
-        return new()
-        {
-            Current = crew.Current,
-            Capacity = crew.Capacity,
-            Rotation = crew.Rotation.Convert<Client.ShipCrewRotation, CrewRotation>(),
-            Morale = crew.Morale,
-            Wages = crew.Wages,
-        };
-    }
 
     private static Navigation MapNavigation(Client.ShipNav navigation)
     {
@@ -272,16 +179,6 @@ public sealed class ShipService(Client.SpaceTradersService service)
             Name = registration.Name,
             FactionSymbol = registration.FactionSymbol,
             Role = registration.Role.Convert<Client.ShipRole, ShipRole>(),
-        };
-    }
-
-    private static Requirements MapRequirements(Client.ShipRequirements requirements)
-    {
-        return new()
-        {
-            Crew = requirements.Crew,
-            Power = requirements.Power,
-            Slots = requirements.Slots,
         };
     }
 }

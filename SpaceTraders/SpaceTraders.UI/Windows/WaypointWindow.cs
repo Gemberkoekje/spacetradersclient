@@ -49,7 +49,7 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
         if (Waypoint is not null && Waypoint == waypoint)
             return;
 
-        Title = $"Waypoint {waypoint.Symbol}";
+        Title = $"Waypoint {Symbol} in {ParentSymbol}";
         Waypoint = waypoint;
         DrawContent();
     }
@@ -69,7 +69,7 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
         Clean();
         if (Waypoint is null)
         {
-            Controls.AddLabel($"Waypoint loading...", 2, 2);
+            Controls.AddLabel($"Waypoint not found.", 2, 2);
             ResizeAndRedraw();
             return;
         }
@@ -80,7 +80,7 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
         Controls.AddLabel($"Location: {Waypoint.X}, {Waypoint.Y}", 2, y++);
         if (Waypoint.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Shipyard))
         {
-            Controls.AddLabel($"Shipyard (will become a button eventually)", 2, y++);
+            Controls.AddButton($"Shipyard", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardWindow>(Symbol, ParentSymbol));
         }
         if (Waypoint.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Marketplace))
         {

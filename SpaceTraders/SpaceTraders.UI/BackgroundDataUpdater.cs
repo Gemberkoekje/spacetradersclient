@@ -17,6 +17,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace SpaceTraders.UI;
 
+#pragma warning disable S107 // Methods should not have too many parameters
 public sealed class BackgroundDataUpdater(
     RootScreen rootScreen,
     AgentService agentService,
@@ -24,8 +25,10 @@ public sealed class BackgroundDataUpdater(
     ShipService shipService,
     SystemService systemService,
     WaypointService waypointService,
+    ShipyardService shipyardService,
     Scheduler scheduler
     ) : BackgroundService
+#pragma warning restore S107 // Methods should not have too many parameters
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -37,6 +40,7 @@ public sealed class BackgroundDataUpdater(
         shipService.Arrived += (dateTimeOffset) => scheduler.Enqueue(dateTimeOffset, async () => await shipService.Arrive());
         await systemService.Initialize();
         await waypointService.Initialize();
+        await shipyardService.Initialize();
     }
 
     private async Task LoadSystemsForShips(Ship[] ships)
@@ -49,6 +53,14 @@ public sealed class BackgroundDataUpdater(
         {
             await systemService.AddSystem(systemSymbol);
             await waypointService.AddSystem(systemSymbol);
+        }
+        var shipyardSymbols = ships
+            .Select(s => (s.Navigation.SystemSymbol, s.Navigation.WaypointSymbol))
+            .Distinct()
+            .ToArray();
+        foreach (var shipyardSymbol in shipyardSymbols)
+        {
+            await shipyardService.AddWaypoint(shipyardSymbol.SystemSymbol, shipyardSymbol.WaypointSymbol);
         }
     }
 
