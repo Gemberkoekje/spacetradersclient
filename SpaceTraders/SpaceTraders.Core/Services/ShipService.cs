@@ -1,4 +1,5 @@
 using Qowaiv;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.ShipModels;
@@ -23,7 +24,7 @@ public sealed class ShipService(Client.SpaceTradersService service)
     private ImmutableList<Ship> Ships { get; set; } = [];
 
     public event Func<Ship[], Task>? Updated;
-    
+
     public event Action<DateTimeOffset>? Arrived;
 
     public async Task Initialize()
@@ -66,41 +67,221 @@ public sealed class ShipService(Client.SpaceTradersService service)
         return new Ship()
         {
             Symbol = ship.Symbol,
-            Registration = new()
-            {
-                Name = ship.Registration.Name,
-                FactionSymbol = ship.Registration.FactionSymbol,
-                Role = ship.Registration.Role.Convert(),
-            },
-            Navigation = new()
-            {
-                ShipSymbol = ship.Symbol,
-                SystemSymbol = ship.Nav.SystemSymbol,
-                WaypointSymbol = ship.Nav.WaypointSymbol,
-                Route = new()
-                {
-                    Destination = new()
-                    {
-                        Symbol = ship.Nav.Route.Destination.Symbol,
-                        Type = ship.Nav.Route.Destination.Type.Convert(),
-                        SystemSymbol = ship.Nav.Route.Destination.SystemSymbol,
-                        X = ship.Nav.Route.Destination.X,
-                        Y = ship.Nav.Route.Destination.Y,
-                    },
-                    Origin = new()
-                    {
-                        Symbol = ship.Nav.Route.Origin.Symbol,
-                        Type = ship.Nav.Route.Origin.Type.Convert(),
-                        SystemSymbol = ship.Nav.Route.Origin.SystemSymbol,
-                        X = ship.Nav.Route.Origin.X,
-                        Y = ship.Nav.Route.Origin.Y,
-                    },
-                    DepartureTime = ship.Nav.Route.DepartureTime,
-                    ArrivalTime = ship.Nav.Route.Arrival,
-                },
-                Status = ship.Nav.Status.Convert(),
-                FlightMode = ship.Nav.FlightMode.Convert(),
-            },
+            Registration = MapRegistration(ship.Registration),
+            Navigation = MapNavigation(ship.Nav),
+            Crew = MapCrew(ship.Crew),
+            Frame = MapFrame(ship.Frame),
+            Reactor = MapReactor(ship.Reactor),
+            Engine = MapEngine(ship.Engine),
+            Modules = MapModules(ship.Modules),
+            Mounts = MapMounts(ship.Mounts),
+            Cargo = MapCargo(ship.Cargo),
+            Fuel = MapFuel(ship.Fuel),
+            Cooldown = MapCooldown(ship.Cooldown),
+        };
+    }
+
+    private static Cooldown MapCooldown(Client.Cooldown cooldown)
+    {
+        return new()
+        {
+            TotalSeconds = cooldown.TotalSeconds,
+            RemainingSeconds = cooldown.RemainingSeconds,
+            Expiration = cooldown.Expiration,
+        };
+    }
+
+    private static Fuel MapFuel(Client.ShipFuel fuel)
+    {
+        return new()
+        {
+            Current = fuel.Current,
+            Capacity = fuel.Capacity,
+            Consumed = MapConsumed(fuel.Consumed),
+        };
+    }
+
+    private static Consumed MapConsumed(Client.Consumed consumed)
+    {
+        return new()
+        {
+            Amount = consumed.Amount,
+            Timestamp = consumed.Timestamp,
+        };
+    }
+
+    private static Cargo MapCargo(Client.ShipCargo cargo)
+    {
+        return new()
+        {
+            Capacity = cargo.Capacity,
+            Units = cargo.Units,
+            Inventory = MapInventory(cargo.Inventory),
+        };
+    }
+
+    private static ImmutableHashSet<CargoItem> MapInventory(ICollection<Client.ShipCargoItem> inventory)
+    {
+        return inventory.Select(MapCargoItem).ToImmutableHashSet();
+    }
+
+    private static CargoItem MapCargoItem(Client.ShipCargoItem i)
+    {
+        return new CargoItem()
+        {
+            Symbol = i.Symbol.Convert<Client.TradeSymbol, TradeSymbol>(),
+            Name = i.Name,
+            Description = i.Description,
+            Units = i.Units,
+        };
+    }
+
+    private static ImmutableList<Mount> MapMounts(ICollection<Client.ShipMount> mounts)
+    {
+        return mounts.Select(MapMount).ToImmutableList();
+    }
+
+    private static Mount MapMount(Client.ShipMount m)
+    {
+        return new Mount()
+        {
+            Symbol = m.Symbol.Convert<Client.ShipMountSymbol, MountSymbol>(),
+            Name = m.Name,
+            Description = m.Description,
+            Strength = m.Strength,
+            Deposits = m.Deposits != null ? m.Deposits.Select(d => d.Convert<Client.Deposits, Deposits>()).ToImmutableHashSet() : ImmutableHashSet<Deposits>.Empty,
+            Requirements = MapRequirements(m.Requirements),
+        };
+    }
+
+    private static ImmutableList<Module> MapModules(ICollection<Client.ShipModule> modules)
+    {
+        return modules.Select(MapModule).ToImmutableList();
+    }
+
+    private static Module MapModule(Client.ShipModule m)
+    {
+        return new Module()
+        {
+            Symbol = m.Symbol.Convert<Client.ShipModuleSymbol, ModuleSymbol>(),
+            Name = m.Name,
+            Description = m.Description,
+            Capacity = m.Capacity,
+            Range = m.Range,
+            Requirements = MapRequirements(m.Requirements),
+        };
+    }
+
+    private static Engine MapEngine(Client.ShipEngine engine)
+    {
+        return new()
+        {
+            Symbol = engine.Symbol.Convert<Client.ShipEngineSymbol, EngineSymbol>(),
+            Name = engine.Name,
+            Description = engine.Description,
+            Speed = engine.Speed,
+            Condition = engine.Condition,
+            Integrity = engine.Integrity,
+            Requirements = MapRequirements(engine.Requirements),
+            Quality = engine.Quality,
+        };
+    }
+
+    private static Reactor MapReactor(Client.ShipReactor reactor)
+    {
+        return new()
+        {
+            Symbol = reactor.Symbol.Convert<Client.ShipReactorSymbol, ReactorSymbol>(),
+            Name = reactor.Name,
+            Description = reactor.Description,
+            PowerOutput = reactor.PowerOutput,
+            Condition = reactor.Condition,
+            Integrity = reactor.Integrity,
+            Requirements = MapRequirements(reactor.Requirements),
+            Quality = reactor.Quality,
+        };
+    }
+
+    private static Frame MapFrame(Client.ShipFrame frame)
+    {
+        return new()
+        {
+            Symbol = frame.Symbol.Convert<Client.ShipFrameSymbol, FrameSymbol>(),
+            Name = frame.Name,
+            Description = frame.Description,
+            ModuleSlots = frame.ModuleSlots,
+            MountingPoints = frame.MountingPoints,
+            FuelCapacity = frame.FuelCapacity,
+            Condition = frame.Condition,
+            Integrity = frame.Integrity,
+            Requirements = MapRequirements(frame.Requirements),
+        };
+    }
+
+    private static Crew MapCrew(Client.ShipCrew crew)
+    {
+        return new()
+        {
+            Current = crew.Current,
+            Capacity = crew.Capacity,
+            Rotation = crew.Rotation.Convert<Client.ShipCrewRotation, CrewRotation>(),
+            Morale = crew.Morale,
+            Wages = crew.Wages,
+        };
+    }
+
+    private static Navigation MapNavigation(Client.ShipNav navigation)
+    {
+        return new()
+        {
+            SystemSymbol = navigation.SystemSymbol,
+            WaypointSymbol = navigation.WaypointSymbol,
+            Route = MapRoute(navigation.Route),
+            Status = navigation.Status.Convert<Client.ShipNavStatus, ShipNavStatus>(),
+            FlightMode = navigation.FlightMode.Convert<Client.ShipNavFlightMode, ShipNavFlightMode>(),
+        };
+    }
+
+    private static NavigationRoute MapRoute(Client.ShipNavRoute route)
+    {
+        return new()
+        {
+            Destination = MapWaypoint(route.Destination),
+            Origin = MapWaypoint(route.Origin),
+            DepartureTime = route.DepartureTime,
+            ArrivalTime = route.Arrival,
+        };
+    }
+
+    private static NavigationWaypoint MapWaypoint(Client.ShipNavRouteWaypoint waypoint)
+    {
+        return new()
+        {
+            Symbol = waypoint.Symbol,
+            Type = waypoint.Type.Convert<Client.WaypointType, WaypointType>(),
+            SystemSymbol = waypoint.SystemSymbol,
+            X = waypoint.X,
+            Y = waypoint.Y,
+        };
+    }
+
+    private static Registration MapRegistration(Client.ShipRegistration registration)
+    {
+        return new()
+        {
+            Name = registration.Name,
+            FactionSymbol = registration.FactionSymbol,
+            Role = registration.Role.Convert<Client.ShipRole, ShipRole>(),
+        };
+    }
+
+    private static Requirements MapRequirements(Client.ShipRequirements requirements)
+    {
+        return new()
+        {
+            Crew = requirements.Crew,
+            Power = requirements.Power,
+            Slots = requirements.Slots,
         };
     }
 }

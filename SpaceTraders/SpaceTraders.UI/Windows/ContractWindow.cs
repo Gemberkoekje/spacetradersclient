@@ -1,7 +1,6 @@
 ﻿using SpaceTraders.Core.Models.ContractModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
@@ -20,10 +19,12 @@ internal sealed class ContractWindow : ClosableWindow
     public void LoadData(Contract[] data)
     {
         var contract = data.Length > 0 ? data[0] : null;
+        if (contract is null)
+            return;
         if (Contract is not null && Contract.ContractsEqualByValue(Contract, contract))
             return;
 
-        Title = $"Contract{(contract != null ? $" {contract.Id}" : string.Empty)}";
+        Title = $"Contract";
         Contract = contract;
         DrawContent();
     }

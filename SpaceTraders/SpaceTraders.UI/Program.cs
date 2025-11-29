@@ -41,7 +41,16 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<WarningWindow>();
         services.AddTransient<WaypointWindow>();
         services.AddTransient<StarMapWindow>();
-
+        services.AddTransient<CargoWindow>();
+        services.AddTransient<CrewWindow>();
+        services.AddTransient<EngineWindow>();
+        services.AddTransient<FrameWindow>();
+        services.AddTransient<ModulesWindow>();
+        services.AddTransient<ModuleWindow>();
+        services.AddTransient<MountsWindow>();
+        services.AddTransient<MountWindow>();
+        services.AddTransient<ReactorWindow>();
+        
         services.AddSingleton<BackgroundDataUpdater>();
         services.AddSingleton<Scheduler>();
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<BackgroundDataUpdater>());

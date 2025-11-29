@@ -1,4 +1,5 @@
-﻿using SpaceTraders.Core.Extensions;
+﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.SystemModels;
 using System;
@@ -47,13 +48,13 @@ public sealed class WaypointService(Client.SpaceTradersService service)
         {
             SystemSymbol = w.SystemSymbol,
             Symbol = w.Symbol,
-            Type = w.Type.Convert(),
+            Type = w.Type.Convert<Client.WaypointType, WaypointType>(),
             X = w.X,
             Y = w.Y,
             Orbitals = w.Orbitals.Select(o => o.Symbol).ToList(),
             Orbits = w.Orbits,
-            Traits = [.. w.Traits.Select(t => new WaypointTrait() { Name = t.Name, Description = t.Description, Symbol = t.Symbol.Convert() })],
-            Modifiers = [.. w.Modifiers.Select(m => new WaypointModifier() { Name = m.Name, Description = m.Description, Symbol = m.Symbol.Convert() })],
+            Traits = [.. w.Traits.Select(t => new WaypointTrait() { Name = t.Name, Description = t.Description, Symbol = t.Symbol.Convert<Client.WaypointTraitSymbol, Enums.WaypointTraitSymbol>() })],
+            Modifiers = [.. w.Modifiers.Select(m => new WaypointModifier() { Name = m.Name, Description = m.Description, Symbol = m.Symbol.Convert<Client.WaypointModifierSymbol, WaypointModifierSymbol>() })],
             Chart = new Chart() { WaypointSymbol = w.Chart.WaypointSymbol, SubmittedBy = w.Chart.SubmittedBy, SubmittedOn = w.Chart.SubmittedOn },
             IsUnderConstruction = w.IsUnderConstruction,
         };

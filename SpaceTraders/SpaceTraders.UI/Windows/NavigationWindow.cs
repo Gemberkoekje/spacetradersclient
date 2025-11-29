@@ -28,7 +28,7 @@ internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
         var navigation = data.First(s => s.Symbol == Symbol).Navigation;
         if (Navigation is not null && Navigation == navigation)
             return Task.CompletedTask;
-        Title = $"Navigation for ship {navigation.ShipSymbol}";
+        Title = $"Navigation for ship {Symbol}";
         Navigation = navigation;
         DrawContent();
         return Task.CompletedTask;

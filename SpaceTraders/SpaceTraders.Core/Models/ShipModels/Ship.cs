@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace SpaceTraders.Core.Models.ShipModels;
 
 /// <summary>
@@ -24,4 +26,21 @@ public sealed record Ship
     /// </summary>
     required public Navigation Navigation { get; init; }
 
+    required public Crew Crew { get; init; }
+
+    required public Frame Frame { get; init; }
+
+    required public Reactor Reactor { get; init; }
+
+    required public Engine Engine { get; init; }
+
+    required public ImmutableList<Module> Modules { get; init; }
+
+    required public ImmutableList<Mount> Mounts { get; init; }
+
+    required public Cargo Cargo { get; init; }
+
+    required public Fuel Fuel { get; init; }
+
+    required public Cooldown Cooldown { get; init; }
 }

@@ -11,8 +11,6 @@ namespace SpaceTraders.Core.Models.ShipModels;
 /// </remarks>
 public sealed record Navigation
 {
-    required public string ShipSymbol { get; init; }
-
     /// <summary>
     /// Symbol of the system the ship is currently in (e.g. system identifier).
     /// </summary>

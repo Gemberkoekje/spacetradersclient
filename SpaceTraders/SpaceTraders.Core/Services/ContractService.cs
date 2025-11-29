@@ -1,5 +1,6 @@
 ﻿using Qowaiv;
 using Qowaiv.Validation.Abstractions;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.ContractModels;
@@ -64,7 +65,7 @@ public sealed class ContractService(Client.SpaceTradersService service)
         {
             Id = contract.Id,
             FactionSymbol = contract.FactionSymbol,
-            Type = contract.Type.Convert(),
+            Type = contract.Type.Convert<Client.ContractType, ContractType>(),
             Terms = new ContractTerms()
             {
                 Deadline = contract.Terms.Deadline,

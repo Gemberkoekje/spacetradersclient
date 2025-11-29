@@ -1,4 +1,5 @@
 ﻿using Qowaiv;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.SystemModels;
@@ -45,10 +46,10 @@ public class SystemService(Client.SpaceTradersService service, WaypointService w
             Constellation = s.Constellation,
             Symbol = s.Symbol,
             SectorSymbol = s.SectorSymbol,
-            SystemType = s.Type.Convert(),
+            SystemType = s.Type.Convert<Client.SystemType, SystemType>(),
             X = s.X,
             Y = s.Y,
-            Factions = [.. s.Factions.Select(f => f.Symbol.Convert())],
+            Factions = [.. s.Factions.Select(f => f.Symbol.Convert<Client.FactionSymbol, FactionSymbol>())],
             Name = s.Name,
         };
     }
