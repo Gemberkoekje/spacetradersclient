@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.Core.Services;
 
-public sealed class ShipyardService(Client.SpaceTradersService service, WaypointService waypointService)
+public sealed class ShipyardService(Client.SpaceTradersService service, WaypointService waypointService, ModuleService moduleService)
 {
     private ImmutableDictionary<string, ImmutableList<Shipyard>> Shipyards { get; set; } = [];
 
@@ -39,6 +39,11 @@ public sealed class ShipyardService(Client.SpaceTradersService service, Waypoint
         }
         systemList = systemList.Add(MapShipyard(shipyard.Value.Data));
         Shipyards = Shipyards.SetItem(systemSymbol, systemList);
+        moduleService.AddEngines(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.Select(t => t.Engine))).ToImmutableArray());
+        moduleService.AddReactors(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.Select(t => t.Reactor))).ToImmutableArray());
+        moduleService.AddFrames(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.Select(t => t.Frame))).ToImmutableArray());
+        moduleService.AddModules(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.SelectMany(t => t.Modules))).ToImmutableArray());
+        moduleService.AddMounts(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.SelectMany(t => t.Mounts))).ToImmutableArray());
         Update(Shipyards);
     }
 

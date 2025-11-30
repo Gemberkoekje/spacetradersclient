@@ -15,14 +15,13 @@ internal sealed class ShipsWindow : ClosableWindow
         : base(rootScreen, 52, 11)
     {
         shipService.Updated += LoadData;
-        Ships = shipService.GetShips().ToArray();
-        DrawContent();
+        LoadData(shipService.GetShips().ToArray());
     }
 
     public Task LoadData(Ship[] data)
     {
         if (Ships.All(s => s == data.FirstOrDefault(d => d.Symbol == s.Symbol)) && data.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
-            return Task.CompletedTask; ;
+            return Task.CompletedTask;
 
         Ships = data;
         Title = $"Ships";
@@ -42,7 +41,7 @@ internal sealed class ShipsWindow : ClosableWindow
         int y = 2;
         foreach (var ship in Ships)
         {
-            Controls.AddButton($"{ship.Symbol}", 2, y++, (_, _) => RootScreen.ShowWindow<ShipWindow>(ship.Symbol));
+            Controls.AddButton($"{ship.Registration.Name} ({ship.Registration.Role} {ship.Frame.Name} at {ship.Navigation.WaypointSymbol} in {ship.Navigation.SystemSymbol})", 2, y++, (_, _) => RootScreen.ShowWindow<ShipWindow>([ship.Symbol]));
         }
         ResizeAndRedraw();
     }

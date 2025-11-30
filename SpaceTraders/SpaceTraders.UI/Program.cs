@@ -30,6 +30,7 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<ContractService>();
         services.AddSingleton<WaypointService>();
         services.AddSingleton<ShipyardService>();
+        services.AddSingleton<ModuleService>();
 
         services.AddTransient<AgentWindow>();
         services.AddTransient<ContractWindow>();
@@ -54,6 +55,10 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<ShipyardWindow>();
         services.AddTransient<TransactionsWindow>();
         services.AddTransient<ShipyardShipsWindow>();
+        services.AddTransient<ShipyardShipWindow>();
+        services.AddTransient<SystemsWindow>();
+        services.AddTransient<ShipyardModulesWindow>();
+        services.AddTransient<ShipyardMountsWindow>();
 
         services.AddSingleton<BackgroundDataUpdater>();
         services.AddSingleton<Scheduler>();
@@ -69,11 +74,11 @@ SadConsole.Configuration.Builder
     .SetStartingScreen((_) => host.Services.GetRequiredService<RootScreen>())
     .IsStartingScreenFocused(true)
     .ConfigureFonts(true)
-    .OnStart(async (_, _) =>
+    .OnStart((_, _) =>
     {
-        await host.StartAsync();
+        host.StartAsync().GetAwaiter().GetResult();
     })
-    .OnEnd(async (_, _) =>
+    .OnEnd((_, _) =>
     {
-        await host.StopAsync();
+        host.StopAsync().GetAwaiter().GetResult();
     }).Run();

@@ -1,42 +1,35 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
+﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
-using System.Linq;
-using System.Threading.Tasks;
+using System;
+using System.Collections.Immutable;
 
 namespace SpaceTraders.UI.Windows;
 
 internal sealed class EngineWindow : ClosableWindow, ICanSetSymbols
 {
-    private string Symbol { get; set; } = string.Empty;
-
     private Engine? Engine { get; set; }
-    private ShipService ShipService { get; init; }
 
-    public EngineWindow(RootScreen rootScreen, ShipService shipService)
+    private ModuleService ModuleService { get; init; }
+
+    public EngineWindow(RootScreen rootScreen, ModuleService moduleService)
         : base(rootScreen, 52, 20)
     {
-        shipService.Updated += LoadData;
-        ShipService = shipService;
+        ModuleService = moduleService;
         DrawContent();
     }
 
-    public Task LoadData(Ship[] data)
+    public void SetSymbol(string[] symbols)
     {
-        var engine = data.First(s => s.Symbol == Symbol).Engine;
-        if (Engine is not null && Engine == engine)
-            return Task.CompletedTask;
-        Title = $"Engine for ship {Symbol}";
+        var engine = ModuleService.GetEngines().GetValueOrDefault(Enum.Parse<EngineSymbol>(symbols[0]));
+        if (engine != null)
+        {
+            Title = $"{engine.Name}";
+        }
         Engine = engine;
         DrawContent();
-        return Task.CompletedTask;
-    }
-
-    public void SetSymbol(string symbol, string? _)
-    {
-        Symbol = symbol;
-        LoadData(ShipService.GetShips().ToArray());
     }
 
     private void DrawContent()

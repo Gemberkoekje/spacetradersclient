@@ -34,9 +34,9 @@ internal sealed class MountsWindow : ClosableWindow, ICanSetSymbols
         return Task.CompletedTask;
     }
 
-    public void SetSymbol(string symbol, string? _)
+    public void SetSymbol(string[] symbols)
     {
-        Symbol = symbol;
+        Symbol = symbols[0];
         LoadData(ShipService.GetShips().ToArray());
     }
 
@@ -52,7 +52,7 @@ internal sealed class MountsWindow : ClosableWindow, ICanSetSymbols
         var y = 2;
         foreach (var mount in Mounts)
         {
-            Controls.AddButton($"{mount.Name} (Strength: {mount.Strength}{(mount.Deposits.Any() ? $", Deposits: {mount.Deposits.Count}" : "")})", 2, y++, (_, _) => RootScreen.ShowWindow<MountWindow>(mount.Symbol.ToString(), Symbol));
+            Controls.AddButton($"{mount.Name} (Strength: {mount.Strength}{(mount.Deposits.Any() ? $", Deposits: {mount.Deposits.Count}" : "")})", 2, y++, (_, _) => RootScreen.ShowWindow<MountWindow>([mount.Symbol.ToString()]));
         }
 
         ResizeAndRedraw();

@@ -34,9 +34,9 @@ internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
         return Task.CompletedTask;
     }
 
-    public void SetSymbol(string symbol, string? _)
+    public void SetSymbol(string[] symbols)
     {
-        Symbol = symbol;
+        Symbol = symbols[0];
         LoadData(ShipService.GetShips().ToArray());
     }
 
@@ -51,7 +51,7 @@ internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
         }
         var y = 2;
         Controls.AddLabel($"System:", 2, y);
-        Controls.AddButton($"{Navigation.SystemSymbol}", 10, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow>(Navigation.SystemSymbol));
+        Controls.AddButton($"{Navigation.SystemSymbol}", 10, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow>([Navigation.SystemSymbol]));
         Controls.AddLabel($"Waypoint: {Navigation.WaypointSymbol}", 2, y++);
         Controls.AddLabel($"Destination: {Navigation.Route.Destination.Symbol}", 2, y++);
         Controls.AddLabel($"Destination: {Navigation.Route.Destination.SystemSymbol}", 2, y++);

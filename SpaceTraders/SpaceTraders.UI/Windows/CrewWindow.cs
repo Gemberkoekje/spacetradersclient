@@ -34,9 +34,9 @@ internal sealed class CrewWindow : ClosableWindow, ICanSetSymbols
         return Task.CompletedTask;
     }
 
-    public void SetSymbol(string symbol, string? _)
+    public void SetSymbol(string[] symbols)
     {
-        Symbol = symbol;
+        Symbol = symbols[0];
         LoadData(ShipService.GetShips().ToArray());
     }
 

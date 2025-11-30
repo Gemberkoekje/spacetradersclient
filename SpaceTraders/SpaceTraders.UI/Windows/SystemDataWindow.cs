@@ -37,9 +37,9 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanSetSymbols
         DrawContent();
     }
 
-    public void SetSymbol(string symbol, string? _)
+    public void SetSymbol(string[] symbols)
     {
-        Symbol = symbol;
+        Symbol = symbols[0];
         LoadData(SystemService.GetSystems().ToArray());
         LoadData(WaypointService.GetWaypoints());
         LoadData(ShipService.GetShips().ToArray());
@@ -91,7 +91,7 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanSetSymbols
         Controls.AddLabel($"Position: {System.X}, {System.Y}", 2, y++);
         Controls.AddLabel($"Waypoints: {Waypoints.Count()}", 2, y++);
         Controls.AddLabel($"Factions: {System.Factions.Count()}", 2, y++);
-        Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow>(System.Symbol));
+        Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow>([System.Symbol]));
         y++;
         Controls.AddLabel($"Markets & Shipyards:", 2, y++);
         foreach (var wp in Waypoints.Where(w => w.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Marketplace || t.Symbol == Core.Enums.WaypointTraitSymbol.Shipyard) || Ships.Any(s => s.Navigation.WaypointSymbol == w.Symbol)).OrderBy(w => w.Symbol))
@@ -101,10 +101,10 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanSetSymbols
             {
                 Controls.AddLabel($"{orbits.Symbol} ({orbits.Type})", 2, y++, Color.Gray);
             }
-            Controls.AddButton($"{wp.Symbol} ({(wp.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Marketplace) ? "Marketplace" : string.Empty)}{(wp.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Shipyard) ? " & Shipyard" : string.Empty)})", string.IsNullOrEmpty(wp.Orbits) ? 2 : 4, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>(wp.Symbol, wp.SystemSymbol));
+            Controls.AddButton($"{wp.Symbol} ({(wp.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Marketplace) ? "Marketplace" : string.Empty)}{(wp.Traits.Any(t => t.Symbol == Core.Enums.WaypointTraitSymbol.Shipyard) ? " & Shipyard" : string.Empty)})", string.IsNullOrEmpty(wp.Orbits) ? 2 : 4, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>([wp.Symbol, wp.SystemSymbol]));
             foreach (var ship in Ships.Where(s => s.Navigation.WaypointSymbol == wp.Symbol).OrderBy(s => s.Symbol))
             {
-                Controls.AddButton($"{ship.Symbol} ({ship.Registration.Role})", string.IsNullOrEmpty(wp.Orbits) ? 4 : 6, y++, (_, _) => RootScreen.ShowWindow<ShipWindow>(ship.Symbol), Color.Cyan);
+                Controls.AddButton($"{ship.Symbol} ({ship.Registration.Role})", string.IsNullOrEmpty(wp.Orbits) ? 4 : 6, y++, (_, _) => RootScreen.ShowWindow<ShipWindow>([ship.Symbol]), Color.Cyan);
             }
         }
 

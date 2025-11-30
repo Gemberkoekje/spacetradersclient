@@ -1,42 +1,35 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
+﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
-using System.Linq;
-using System.Threading.Tasks;
+using System;
+using System.Collections.Immutable;
 
 namespace SpaceTraders.UI.Windows;
 
 internal sealed class ReactorWindow : ClosableWindow, ICanSetSymbols
 {
-    private string Symbol { get; set; } = string.Empty;
-
     private Reactor? Reactor { get; set; }
-    private ShipService ShipService { get; init; }
 
-    public ReactorWindow(RootScreen rootScreen, ShipService shipService)
+    private ModuleService ModuleService { get; init; }
+
+    public ReactorWindow(RootScreen rootScreen, ModuleService moduleService)
         : base(rootScreen, 52, 20)
     {
-        shipService.Updated += LoadData;
-        ShipService = shipService;
+        ModuleService = moduleService;
         DrawContent();
     }
 
-    public Task LoadData(Ship[] data)
+    public void SetSymbol(string[] symbols)
     {
-        var reactor = data.First(s => s.Symbol == Symbol).Reactor;
-        if (Reactor is not null && Reactor == reactor)
-            return Task.CompletedTask;
-        Title = $"Reactor for ship {Symbol}";
+        var reactor = ModuleService.GetReactors().GetValueOrDefault(Enum.Parse<ReactorSymbol>(symbols[0]));
+        if (reactor != null)
+        {
+            Title = $"{reactor.Name}";
+        }
         Reactor = reactor;
         DrawContent();
-        return Task.CompletedTask;
-    }
-
-    public void SetSymbol(string symbol, string? _)
-    {
-        Symbol = symbol;
-        LoadData(ShipService.GetShips().ToArray());
     }
 
     private void DrawContent()

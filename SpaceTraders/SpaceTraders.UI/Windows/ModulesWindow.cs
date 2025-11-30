@@ -34,9 +34,9 @@ internal sealed class ModulesWindow : ClosableWindow, ICanSetSymbols
         return Task.CompletedTask;
     }
 
-    public void SetSymbol(string symbol, string? _)
+    public void SetSymbol(string[] symbols)
     {
-        Symbol = symbol;
+        Symbol = symbols[0];
         LoadData(ShipService.GetShips().ToArray());
     }
 
@@ -52,7 +52,7 @@ internal sealed class ModulesWindow : ClosableWindow, ICanSetSymbols
         var y = 2;
         foreach(var module in Modules)
         {
-            Controls.AddButton($"{module.Name} (Capacity: {module.Capacity}, Range: {module.Range})", 2, y++, (_, _) => RootScreen.ShowWindow<ModuleWindow>(module.Symbol.ToString(), Symbol));
+            Controls.AddButton($"{module.Name} (Capacity: {module.Capacity}, Range: {module.Range})", 2, y++, (_, _) => RootScreen.ShowWindow<ModuleWindow>([module.Symbol.ToString()]));
         }
 
         ResizeAndRedraw();

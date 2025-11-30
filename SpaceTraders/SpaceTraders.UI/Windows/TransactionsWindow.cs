@@ -24,10 +24,10 @@ internal sealed class TransactionsWindow : ClosableWindow, ICanSetSymbols
         DrawContent();
     }
 
-    public void SetSymbol(string symbol, string? parentSymbol)
+    public void SetSymbol(string[] symbols)
     {
-        Symbol = symbol;
-        ParentSymbol = parentSymbol ?? string.Empty;
+        Symbol = symbols[0];
+        ParentSymbol = symbols[1];
         LoadData(ShipyardService.GetShipyards());
     }
 

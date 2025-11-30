@@ -34,10 +34,10 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
         DrawContent();
     }
 
-    public void SetSymbol(string symbol, string? parentSymbol)
+    public void SetSymbol(string[] symbols)
     {
-        Symbol = symbol;
-        ParentSymbol = parentSymbol;
+        Symbol = symbols[0];
+        ParentSymbol = symbols[1];
         LoadData(WaypointService.GetWaypoints());
         LoadData(ShipService.GetShips().ToArray());
     }
@@ -80,7 +80,7 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
         Controls.AddLabel($"Location: {Waypoint.X}, {Waypoint.Y}", 2, y++);
         if (Waypoint.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Shipyard))
         {
-            Controls.AddButton($"Shipyard", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardWindow>(Symbol, ParentSymbol));
+            Controls.AddButton($"Shipyard", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardWindow>([Symbol, ParentSymbol]));
         }
         if (Waypoint.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Marketplace))
         {
@@ -96,7 +96,7 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
             Controls.AddLabel($"Ships at this Waypoint:", 2, y++);
             foreach (var ship in Ships.OrderBy(s => s.Symbol))
             {
-                Controls.AddButton($"{ship.Symbol} ({ship.Registration.Role})", 4, y++, (_, _) => RootScreen.ShowWindow<ShipWindow>(ship.Symbol));
+                Controls.AddButton($"{ship.Symbol} ({ship.Registration.Role})", 4, y++, (_, _) => RootScreen.ShowWindow<ShipWindow>([ship.Symbol]));
             }
         }
         y++;
@@ -105,13 +105,13 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
             Controls.AddLabel($"Orbitals:", 2, y++);
             foreach (var orbital in Waypoint.Orbitals.OrderBy(w => w))
             {
-                Controls.AddButton($"{orbital}", 4, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>(orbital, Waypoint.SystemSymbol));
+                Controls.AddButton($"{orbital}", 4, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>([orbital, Waypoint.SystemSymbol]));
             }
         }
         if (!string.IsNullOrEmpty(Waypoint.Orbits))
         {
             Controls.AddLabel($"Orbits:", 2, y);
-            Controls.AddButton($"{Waypoint.Orbits}", 11, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>(Waypoint.Orbits, Waypoint.SystemSymbol));
+            Controls.AddButton($"{Waypoint.Orbits}", 11, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>([Waypoint.Orbits, Waypoint.SystemSymbol]));
         }
         y++;
         Controls.AddLabel($"Traits:", 2, y++);

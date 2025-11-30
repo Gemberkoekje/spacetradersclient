@@ -1,6 +1,7 @@
 ﻿using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipModels;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace SpaceTraders.Core.Models.ShipyardModels;
 
@@ -23,4 +24,12 @@ public sealed record ShipyardShip
     required public ImmutableList<Module> Modules { get; init; }
 
     required public ImmutableList<Mount> Mounts { get; init; }
+
+    public int CargoCapacity {
+        get => Modules.Where(m =>
+        m.Symbol == ModuleSymbol.CargoHoldI ||
+        m.Symbol == ModuleSymbol.CargoHoldII ||
+        m.Symbol == ModuleSymbol.CargoHoldIII)
+            .Sum(m => m.Capacity);
+     }
 }

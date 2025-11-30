@@ -1,42 +1,35 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
+﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
-using System.Linq;
-using System.Threading.Tasks;
+using System;
+using System.Collections.Immutable;
 
 namespace SpaceTraders.UI.Windows;
 
 internal sealed class FrameWindow : ClosableWindow, ICanSetSymbols
 {
-    private string Symbol { get; set; } = string.Empty;
-
     private Frame? Frame { get; set; }
-    private ShipService ShipService { get; init; }
 
-    public FrameWindow(RootScreen rootScreen, ShipService shipService)
+    private ModuleService ModuleService { get; init; }
+
+    public FrameWindow(RootScreen rootScreen, ModuleService moduleService)
         : base(rootScreen, 52, 20)
     {
-        shipService.Updated += LoadData;
-        ShipService = shipService;
+        ModuleService = moduleService;
         DrawContent();
     }
 
-    public Task LoadData(Ship[] data)
+    public void SetSymbol(string[] symbols)
     {
-        var frame = data.First(s => s.Symbol == Symbol).Frame;
-        if (Frame is not null && Frame == frame)
-            return Task.CompletedTask;
-        Title = $"Frame for ship {Symbol}";
+        var frame = ModuleService.GetFrames().GetValueOrDefault(Enum.Parse<FrameSymbol>(symbols[0]));
+        if (frame != null)
+        {
+            Title = $"{frame.Name}";
+        }
         Frame = frame;
         DrawContent();
-        return Task.CompletedTask;
-    }
-
-    public void SetSymbol(string symbol, string? _)
-    {
-        Symbol = symbol;
-        LoadData(ShipService.GetShips().ToArray());
     }
 
     private void DrawContent()

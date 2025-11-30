@@ -13,7 +13,7 @@ namespace SpaceTraders.UI;
 
 public class RootScreen : ScreenObject, IDisposable
 {
-    private readonly ScreenSurface _mainSurface;
+    private readonly ControlsConsole _mainSurface;
     IServiceProvider ServiceProvider { get; init; }
     private bool disposed;
     public List<Window> Windows = [];
@@ -29,20 +29,20 @@ public class RootScreen : ScreenObject, IDisposable
 #pragma warning restore S3010 // Static fields should not be updated in constructors
 
         // Create a surface that's the same size as the screen.
-        _mainSurface = new ScreenSurface(
+        _mainSurface = new ControlsConsole(
             Game.Instance.ScreenCellsX,
             Game.Instance.ScreenCellsY);
         ServiceProvider = serviceProvider;
 
         Children.Add(_mainSurface);
         _rootWindow = new RootWindow(this);
-        Children.Add(_rootWindow);
+        _mainSurface.Children.Add(_rootWindow);
         _rootWindow.Show();
 
         SadConsole.Host.Game monoGameInstance = (SadConsole.Host.Game)SadConsole.Game.Instance.MonoGameInstance;
         monoGameInstance.WindowResized += MonoGameInstance_WindowResized;
         _glyphWindow = new SadConsole.UI.Windows.GlyphSelectPopup(19, 25, _mainSurface.Font, _mainSurface.FontSize);
-        _rootWindow.Children.Add(_glyphWindow);
+        _mainSurface.Children.Add(_glyphWindow);
     }
 
     public virtual void Dispose()
@@ -79,13 +79,9 @@ public class RootScreen : ScreenObject, IDisposable
             width: SadConsole.Settings.Rendering.RenderWidth / root.FontSize.X,
             height: SadConsole.Settings.Rendering.RenderHeight / root.FontSize.Y,
             clear: false);
-        _rootWindow.ResizeAndRedraw(
-            width: SadConsole.Settings.Rendering.RenderWidth / root.FontSize.X,
-            height: SadConsole.Settings.Rendering.RenderHeight / root.FontSize.Y,
-            clear: true);
     }
 
-    internal void ShowWindow<TWindow>(string? symbol = null, string? parentsymbol = null) where TWindow : Window
+    internal void ShowWindow<TWindow>(string[] symbols) where TWindow : Window
     {
         var window = ServiceProvider.GetService<TWindow>();
         if (window == null)
@@ -94,9 +90,9 @@ public class RootScreen : ScreenObject, IDisposable
         }
         if (window is ICanSetSymbols dataWindow)
         {
-            dataWindow.SetSymbol(symbol, parentsymbol);
+            dataWindow.SetSymbol(symbols);
         }
-        _rootWindow.Children.Add(window);
+        _mainSurface.Children.Add(window);
         Windows.Add(window);
         window.Show();
     }
@@ -109,7 +105,7 @@ public class RootScreen : ScreenObject, IDisposable
             return;
         }
         window.LoadData(result);
-        _rootWindow.Children.Add(window);
+        _mainSurface.Children.Add(window);
         Windows.Add(window);
         window.Show();
     }
@@ -125,7 +121,7 @@ public class RootScreen : ScreenObject, IDisposable
     internal void HideAndDestroyWindow(Window window)
     {
         window.Hide();
-        _rootWindow.Children.Remove(window);
+        _mainSurface.Children.Remove(window);
         Windows.Remove(window);
         window.Dispose();
     }

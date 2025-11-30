@@ -30,9 +30,9 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanSetSymbols
         DrawContent();
     }
 
-    public void SetSymbol(string symbol, string? _)
+    public void SetSymbol(string[] symbols)
     {
-        Symbol = symbol;
+        Symbol = symbols[0];
         LoadData(SystemService.GetSystems().ToArray());
         LoadData(WaypointService.GetWaypoints());
         DrawContent();

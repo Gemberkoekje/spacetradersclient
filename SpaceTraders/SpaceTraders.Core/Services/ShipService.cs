@@ -19,7 +19,7 @@ namespace SpaceTraders.Core.Services;
 /// Translates the raw client DTO model into the domain <see cref="Ship"/> aggregate with nested value objects
 /// and converts generated enum values into internal enums via extension methods.
 /// </remarks>
-public sealed class ShipService(Client.SpaceTradersService service)
+public sealed class ShipService(Client.SpaceTradersService service, ModuleService moduleService)
 {
     private ImmutableList<Ship> Ships { get; set; } = [];
 
@@ -32,7 +32,13 @@ public sealed class ShipService(Client.SpaceTradersService service)
         var ships = await service.GetAllPagesAsync(
             (client, page, limit, ct) => client.GetMyShipsAsync(page, limit, ct),
             page => page.Data);
-        Update(ships.Value.Select(MapShip));
+        var ship = ships.Value.Select(MapShip);
+        moduleService.AddEngines(ship.Select(s => s.Engine).ToImmutableArray());
+        moduleService.AddReactors(ship.Select(s => s.Reactor).ToImmutableArray());
+        moduleService.AddFrames(ship.Select(s => s.Frame).ToImmutableArray());
+        moduleService.AddModules(ship.SelectMany(s => s.Modules).ToImmutableArray());
+        moduleService.AddMounts(ship.SelectMany(s => s.Mounts).ToImmutableArray());
+        Update(ship);
     }
 
     private void Update(IEnumerable<Ship> ships)

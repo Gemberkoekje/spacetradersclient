@@ -26,10 +26,10 @@ internal sealed class ShipyardWindow : ClosableWindow, ICanSetSymbols
         DrawContent();
     }
 
-    public void SetSymbol(string symbol, string? parentSymbol)
+    public void SetSymbol(string[] symbols)
     {
-        Symbol = symbol;
-        ParentSymbol = parentSymbol ?? string.Empty;
+        Symbol = symbols[0];
+        ParentSymbol = symbols[1];
         LoadData(ShipyardService.GetShipyards());
     }
 
@@ -53,15 +53,13 @@ internal sealed class ShipyardWindow : ClosableWindow, ICanSetSymbols
         }
         var y = 2;
         Controls.AddLabel($"Symbol: {Shipyard.Symbol}", 2, y++);
-        Controls.AddButton($"Transactions ({Shipyard.Transactions.Count})", 2, y++, (_, _) => RootScreen.ShowWindow<TransactionsWindow>(Symbol, ParentSymbol));
-        Controls.AddButton($"Ships ({Shipyard.Ships.Count})", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardShipsWindow>(Symbol, ParentSymbol));
-        Controls.AddLabel($"Modifications fee: {Shipyard.ModificationsFee}", 2, y++);
-        y++;
-        Controls.AddLabel($"Ship Types:", 2, y++);
-        foreach(var shipType in Shipyard.ShipTypes)
+        foreach (var ship in Shipyard.Ships)
         {
-            Controls.AddLabel($"- {shipType}", 4, y++);
+            Controls.AddButton($"{ship.Name} ({ship.PurchasePrice:0,000})", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardShipWindow>([ship.Type.ToString(), Symbol, ParentSymbol]));
         }
+        y++;
+        Controls.AddLabel($"Modifications fee: {Shipyard.ModificationsFee}", 2, y++);
+        Controls.AddButton($"Transactions ({Shipyard.Transactions.Count})", 2, y++, (_, _) => RootScreen.ShowWindow<TransactionsWindow>([Symbol, ParentSymbol]));
         ResizeAndRedraw();
     }
 }

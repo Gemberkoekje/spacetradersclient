@@ -6,6 +6,6 @@ namespace SpaceTraders.UI.Interfaces
 {
     internal interface ICanSetSymbols
     {
-        public void SetSymbol(string symbol, string? parentSymbol = null);
+        public void SetSymbol(string[] symbols);
     }
 }
