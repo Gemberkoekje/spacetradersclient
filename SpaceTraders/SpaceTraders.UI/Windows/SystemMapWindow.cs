@@ -7,6 +7,7 @@ using SpaceTraders.UI.Interfaces;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
@@ -48,11 +49,12 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanSetSymbols
         DrawContent();
     }
 
-    public void LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
+    public Task LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
     {
         var waypoints = data.GetValueOrDefault(Symbol);
         Waypoints = waypoints.ToArray();
         DrawContent();
+        return Task.CompletedTask;
     }
 
     private void DrawContent()

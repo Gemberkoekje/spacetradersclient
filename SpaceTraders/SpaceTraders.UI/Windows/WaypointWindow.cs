@@ -42,16 +42,17 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
         LoadData(ShipService.GetShips().ToArray());
     }
 
-    public void LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
+    public Task LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
     {
         var waypoints = data.GetValueOrDefault(ParentSymbol);
         var waypoint = waypoints?.FirstOrDefault(d => d.Symbol == Symbol);
         if (Waypoint is not null && Waypoint == waypoint)
-            return;
+            return Task.CompletedTask;
 
         Title = $"Waypoint {Symbol} in {ParentSymbol}";
         Waypoint = waypoint;
         DrawContent();
+        return Task.CompletedTask;
     }
 
     public Task LoadData(Ship[] data)
@@ -84,7 +85,7 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
         }
         if (Waypoint.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Marketplace))
         {
-            Controls.AddLabel($"Marketplace (will become a button eventually)", 2, y++);
+            Controls.AddButton($"Marketplace", 2, y++, (_, _) => RootScreen.ShowWindow<MarketWindow>([Symbol, ParentSymbol]));
         }
         if (Waypoint.IsUnderConstruction)
         {

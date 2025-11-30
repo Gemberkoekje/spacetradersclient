@@ -1,11 +1,9 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
-using SpaceTraders.Core.Models.ShipyardModels;
+﻿using SpaceTraders.Core.Models.ShipyardModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
@@ -55,7 +53,7 @@ internal sealed class ShipyardWindow : ClosableWindow, ICanSetSymbols
         Controls.AddLabel($"Symbol: {Shipyard.Symbol}", 2, y++);
         foreach (var ship in Shipyard.Ships)
         {
-            Controls.AddButton($"{ship.Name} ({ship.PurchasePrice:0,000})", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardShipWindow>([ship.Type.ToString(), Symbol, ParentSymbol]));
+            Controls.AddButton($"{ship.Name} ({ship.PurchasePrice:#,###})", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardShipWindow>([ship.Type.ToString(), Symbol, ParentSymbol]));
         }
         y++;
         Controls.AddLabel($"Modifications fee: {Shipyard.ModificationsFee}", 2, y++);

@@ -26,6 +26,7 @@ public sealed class BackgroundDataUpdater(
     SystemService systemService,
     WaypointService waypointService,
     ShipyardService shipyardService,
+    MarketService marketService,
     Scheduler scheduler
     ) : BackgroundService
 #pragma warning restore S107 // Methods should not have too many parameters
@@ -39,8 +40,15 @@ public sealed class BackgroundDataUpdater(
         await shipService.Initialize();
         shipService.Arrived += (dateTimeOffset) => scheduler.Enqueue(dateTimeOffset, async () => await shipService.Arrive());
         await systemService.Initialize();
+        await marketService.Initialize();
+        waypointService.Updated += LoadDetailsForSystems;
         await waypointService.Initialize();
         await shipyardService.Initialize();
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            scheduler.Enqueue(Clock.UtcNow(), async () => await UpdateSystemsForShips(shipService.GetShips().ToArray()));
+            await Task.Delay(120000, stoppingToken);
+        }
     }
 
     private async Task LoadSystemsForShips(Ship[] ships)
@@ -54,13 +62,31 @@ public sealed class BackgroundDataUpdater(
             await systemService.AddSystem(systemSymbol);
             await waypointService.AddSystem(systemSymbol);
         }
-        var shipyardSymbols = ships
+        await UpdateSystemsForShips(ships);
+     }
+
+    private async Task UpdateSystemsForShips(Ship[] ships)
+    {
+        var waypointSymbols = ships
             .Select(s => (s.Navigation.SystemSymbol, s.Navigation.WaypointSymbol))
             .Distinct()
             .ToArray();
-        foreach (var shipyardSymbol in shipyardSymbols)
+        foreach (var shipyardSymbol in waypointSymbols)
         {
             await shipyardService.AddWaypoint(shipyardSymbol.SystemSymbol, shipyardSymbol.WaypointSymbol);
+            await marketService.AddWaypoint(shipyardSymbol.SystemSymbol, shipyardSymbol.WaypointSymbol);
+        }
+    }
+
+    private async Task LoadDetailsForSystems(ImmutableDictionary<string, ImmutableList<Waypoint>> waypoints)
+    {
+        foreach (var waypointset in waypoints)
+        {
+            foreach (var waypoint in waypointset.Value)
+            {
+                await shipyardService.AddWaypoint(waypointset.Key, waypoint.Symbol);
+                await marketService.AddWaypoint(waypointset.Key, waypoint.Symbol);
+            }
         }
     }
 

@@ -15,8 +15,7 @@ public sealed class WaypointService(Client.SpaceTradersService service)
 {
     private ImmutableDictionary<string, ImmutableList<Waypoint>> Waypoints { get; set; } = [];
 
-    public event Action<ImmutableDictionary<string, ImmutableList<Waypoint>>>? Updated;
-
+    public event Func<ImmutableDictionary<string, ImmutableList<Waypoint>>, Task>? Updated;
     public async Task Initialize()
     {
     }

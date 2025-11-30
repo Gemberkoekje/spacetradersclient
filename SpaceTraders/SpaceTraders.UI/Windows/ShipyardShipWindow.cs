@@ -56,7 +56,7 @@ internal sealed class ShipyardShipWindow : ClosableWindow, ICanSetSymbols
         Controls.AddLabel($"Name: {ShipyardShip.Name}", 2, y++);
         Controls.AddLabel($"Activity: {ShipyardShip.Activity}", 2, y++);
         Controls.AddLabel($"Supply: {ShipyardShip.Supply}", 2, y++);
-        Controls.AddLabel($"PurchasePrice: {ShipyardShip.PurchasePrice}", 2, y++);
+        Controls.AddLabel($"PurchasePrice: {ShipyardShip.PurchasePrice:#,###}", 2, y++);
         y++;
         Controls.AddLabel($"Cargo (0 / {ShipyardShip.CargoCapacity})", 2, y++);
         Controls.AddLabel($"Fuel: {ShipyardShip.Frame.FuelCapacity} / {ShipyardShip.Frame.FuelCapacity}", 2, y++);

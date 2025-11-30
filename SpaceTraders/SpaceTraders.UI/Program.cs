@@ -31,6 +31,7 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<WaypointService>();
         services.AddSingleton<ShipyardService>();
         services.AddSingleton<ModuleService>();
+        services.AddSingleton<MarketService>();
 
         services.AddTransient<AgentWindow>();
         services.AddTransient<ContractWindow>();
@@ -59,6 +60,7 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<SystemsWindow>();
         services.AddTransient<ShipyardModulesWindow>();
         services.AddTransient<ShipyardMountsWindow>();
+        services.AddTransient<MarketWindow>();
 
         services.AddSingleton<BackgroundDataUpdater>();
         services.AddSingleton<Scheduler>();
