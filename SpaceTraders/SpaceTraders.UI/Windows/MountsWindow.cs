@@ -25,6 +25,8 @@ internal sealed class MountsWindow : ClosableWindow, ICanSetSymbols
 
     public Task LoadData(Ship[] data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         var mounts = data.First(s => s.Symbol == Symbol).Mounts;
         if (Mounts is not null && Mounts == mounts)
             return Task.CompletedTask;

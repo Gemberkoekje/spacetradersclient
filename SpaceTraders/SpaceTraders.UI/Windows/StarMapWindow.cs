@@ -24,6 +24,8 @@ internal sealed class StarMapWindow : ClosableWindow
 
     public void LoadData(SystemWaypoint[] data)
     {
+        if (Surface == null)
+            return;
         Title = $"Starmap";
         Systems.AddRange(data);
         DrawContent();

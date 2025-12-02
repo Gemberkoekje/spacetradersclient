@@ -10,6 +10,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
@@ -39,6 +40,8 @@ internal sealed class MarketWindow : ClosableWindow, ICanSetSymbols
 
     public void LoadData(ImmutableDictionary<string, ImmutableList<Market>> data)
     {
+        if (Surface == null)
+            return;
         var market = data.GetValueOrDefault(ParentSymbol)?.FirstOrDefault(s => s.Symbol == Symbol);
 
         Title = $"Market {Symbol} in {ParentSymbol}";

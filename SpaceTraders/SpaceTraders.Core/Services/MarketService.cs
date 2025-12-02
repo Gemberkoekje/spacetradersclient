@@ -1,4 +1,5 @@
-﻿using SpaceTraders.Core.Enums;
+﻿using Qowaiv.Validation.Abstractions;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Models.MarketModels;
 using System;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.Core.Services;
 
-public sealed class MarketService(Client.SpaceTradersService service, WaypointService waypointService, ModuleService moduleService)
+public sealed class MarketService(Client.SpaceTradersService service, WaypointService waypointService, ShipService shipService, AgentService agentService)
 {
     private ImmutableDictionary<string, ImmutableList<Market>> Markets { get; set; } = [];
 
@@ -39,6 +40,29 @@ public sealed class MarketService(Client.SpaceTradersService service, WaypointSe
         Markets = Markets.SetItem(systemSymbol, systemList);
         Update(Markets);
     }
+
+    public async Task<Result> Refuel(string shipSymbol)
+    {
+        var ship = shipService.GetShips().FirstOrDefault(s => s.Symbol == shipSymbol);
+        if (ship == null)
+            return Result.WithMessages(ValidationMessage.Error($"No ship found with symbol {shipSymbol}."));
+
+        var location = Markets.GetValueOrDefault(ship.Navigation.SystemSymbol)?.FirstOrDefault(m => m.Symbol == ship.Navigation.WaypointSymbol);
+        if (location == null)
+            return Result.WithMessages(ValidationMessage.Error($"Ship cannot be refueled, not at a market."));
+
+        var result = await service.EnqueueAsync((client, ct) => client.RefuelShipAsync(new() { Units = ship.Fuel.Capacity - ship.Fuel.Current }, shipSymbol, ct), true);
+        if (!result.IsValid)
+            return result;
+        agentService.Update(result.Value.Data.Agent);
+        var endresult = await shipService.UpdateFuel(result.Value.Data.Fuel, ship.Symbol);
+        if (!endresult.IsValid)
+            return endresult;
+        if (result.Value.Data.Cargo != null)
+            return await shipService.UpdateCargo(result.Value.Data.Cargo, ship.Symbol);
+        return endresult;
+    }
+
 
     public ImmutableDictionary<string, ImmutableList<Market>> GetMarkets()
     {

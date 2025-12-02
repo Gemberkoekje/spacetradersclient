@@ -25,6 +25,8 @@ internal sealed class CrewWindow : ClosableWindow, ICanSetSymbols
 
     public Task LoadData(Ship[] data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         var crew = data.First(s => s.Symbol == Symbol).Crew;
         if (Crew is not null && Crew == crew)
             return Task.CompletedTask;

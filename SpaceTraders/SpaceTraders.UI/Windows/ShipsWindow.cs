@@ -20,6 +20,8 @@ internal sealed class ShipsWindow : ClosableWindow
 
     public Task LoadData(Ship[] data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         if (Ships.All(s => s == data.FirstOrDefault(d => d.Symbol == s.Symbol)) && data.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
             return Task.CompletedTask;
 

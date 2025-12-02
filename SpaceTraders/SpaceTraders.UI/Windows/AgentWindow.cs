@@ -8,15 +8,21 @@ public sealed class AgentWindow : ClosableWindow
 {
     private Agent? _agent { get; set; }
 
+    private AgentService AgentService { get; init; }
+
     public AgentWindow(RootScreen rootScreen, AgentService agentService)
         : base(rootScreen, 52, 11)
     {
-        agentService.Updated += LoadData;
+        AgentService = agentService;
+        AgentService.Updated += LoadData;
         LoadData(agentService.GetAgent());
     }
 
     public void LoadData(Agent data)
     {
+        if (Surface == null)
+            return;
+
         if (_agent is not null && _agent == data)
             return;
 

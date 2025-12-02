@@ -1,4 +1,5 @@
 using Qowaiv;
+using Qowaiv.Validation.Abstractions;
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
@@ -61,6 +62,39 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
             var ships = Ships.Remove(ship).Add(MapShip(update.Value.Data));
             Update(ships);
         }
+    }
+
+    public async Task<Result> UpdateNav(Client.ShipNav navigation, string shipSymbol)
+    {
+        var ship = Ships.FirstOrDefault(s => s.Symbol == shipSymbol);
+        if (ship == null)
+            return Result.WithMessages(ValidationMessage.Error($"No ship found with ship symbol {shipSymbol} to update."));
+
+        var updatedShip = ship with { Navigation = MapNavigation(navigation) };
+        Update(Ships.Remove(ship).Add(updatedShip));
+        return Result.OK;
+    }
+
+    public async Task<Result> UpdateFuel(Client.ShipFuel fuel, string shipSymbol)
+    {
+        var ship = Ships.FirstOrDefault(s => s.Symbol == shipSymbol);
+        if (ship == null)
+            return Result.WithMessages(ValidationMessage.Error($"No ship found with ship symbol {shipSymbol} to update."));
+
+        var updatedShip = ship with { Fuel = MapFuel(fuel) };
+        Update(Ships.Remove(ship).Add(updatedShip));
+        return Result.OK;
+    }
+
+    public async Task<Result> UpdateCargo(Client.ShipCargo cargo, string shipSymbol)
+    {
+        var ship = Ships.FirstOrDefault(s => s.Symbol == shipSymbol);
+        if (ship == null)
+            return Result.WithMessages(ValidationMessage.Error($"No ship found with ship symbol {shipSymbol} to update."));
+
+        var updatedShip = ship with { Cargo = MapCargo(cargo) };
+        Update(Ships.Remove(ship).Add(updatedShip));
+        return Result.OK;
     }
 
     public ImmutableList<Ship> GetShips()

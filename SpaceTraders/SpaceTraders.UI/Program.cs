@@ -25,6 +25,7 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<RootScreen>((s) => new RootScreen(s));
         services.AddSingleton<AgentService>();
         services.AddSingleton<ShipService>();
+        services.AddSingleton<ShipNavService>();
         services.AddSingleton<SystemService>();
         services.AddSingleton<SpaceTradersService>();
         services.AddSingleton<ContractService>();

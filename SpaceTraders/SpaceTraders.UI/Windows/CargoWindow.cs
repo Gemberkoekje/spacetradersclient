@@ -24,6 +24,8 @@ internal sealed class CargoWindow : ClosableWindow, ICanSetSymbols
 
     public Task LoadData(Ship[] data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         var frame = data.First(s => s.Symbol == Symbol).Cargo;
         if (Cargo is not null && Cargo == frame)
             return Task.CompletedTask;

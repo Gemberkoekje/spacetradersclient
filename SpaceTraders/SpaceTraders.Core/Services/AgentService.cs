@@ -17,7 +17,12 @@ public sealed class AgentService(Client.SpaceTradersService service)
     public async Task Initialize()
     {
         var response = await service.EnqueueAsync((client, ct) => client.GetMyAgentAsync(ct));
-        Update(MapAgent(response.Value.Data));
+        Update(response.Value.Data);
+    }
+
+    public void Update(Client.Agent agent)
+    {
+        Update(MapAgent(agent));
     }
 
     private void Update(Agent agent)

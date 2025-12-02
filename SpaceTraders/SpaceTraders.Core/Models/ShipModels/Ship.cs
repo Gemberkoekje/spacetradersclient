@@ -43,4 +43,10 @@ public sealed record Ship
     required public Fuel Fuel { get; init; }
 
     required public Cooldown Cooldown { get; init; }
+
+    public bool CanDock => Navigation.Status == Enums.ShipNavStatus.InOrbit;
+
+    public bool CanOrbit => Navigation.Status == Enums.ShipNavStatus.Docked;
+
+    public bool CanNavigate => Navigation.Status == Enums.ShipNavStatus.InOrbit && Cooldown.RemainingSeconds == 0;
 }

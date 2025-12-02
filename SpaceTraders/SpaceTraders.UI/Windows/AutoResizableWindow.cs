@@ -1,6 +1,8 @@
 ﻿using SadConsole.UI;
 using SadConsole.UI.Controls;
+using SpaceTraders.Core.Services;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
@@ -32,7 +34,6 @@ public class AutoResizableWindow : Window
             closebutton.Position = (Width - 4, 0);
         }
         DrawBorder();
-        IsDirty = true;
         if (!Loaded)
         {
             Loaded = true;
@@ -42,6 +43,7 @@ public class AutoResizableWindow : Window
         {
             Position = (Position.X, 0);
         }
+        IsDirty = true;
     }
 
     protected void Clean()

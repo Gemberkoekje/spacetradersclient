@@ -5,6 +5,7 @@ using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
@@ -36,6 +37,8 @@ internal sealed class ShipyardModulesWindow : ClosableWindow, ICanSetSymbols
 
     public void LoadData(ImmutableDictionary<string, ImmutableList<Shipyard>> data)
     {
+        if (Surface == null)
+            return;
         var shipyard = data.GetValueOrDefault(SystemSymbol).First(s => s.Symbol == WaypointSymbol);
 
         Title = $"Shipyard {shipyard.Symbol}";

@@ -44,6 +44,8 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
 
     public Task LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         var waypoints = data.GetValueOrDefault(ParentSymbol);
         var waypoint = waypoints?.FirstOrDefault(d => d.Symbol == Symbol);
         if (Waypoint is not null && Waypoint == waypoint)
@@ -57,6 +59,8 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
 
     public Task LoadData(Ship[] data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         var relevantData = data.Where(d => d.Navigation.WaypointSymbol == Waypoint?.Symbol).ToArray();
         if (Ships.All(s => s == relevantData.FirstOrDefault(d => d.Symbol == s.Symbol)) && relevantData.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
             return Task.CompletedTask;

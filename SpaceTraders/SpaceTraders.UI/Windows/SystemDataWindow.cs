@@ -47,6 +47,8 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanSetSymbols
 
     public void LoadData(SystemWaypoint[] data)
     {
+        if (Surface == null)
+            return;
         var system = data.FirstOrDefault(d => d.Symbol == Symbol);
         if (System is not null && System == system)
             return;
@@ -57,6 +59,8 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanSetSymbols
 
     public Task LoadData(Ship[] data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         var relevantData = data.Where(d => d.Navigation.SystemSymbol == System.Symbol).ToArray();
         if (Ships.All(s => s == relevantData.FirstOrDefault(d => d.Symbol == s.Symbol)) && relevantData.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
             return Task.CompletedTask;
@@ -67,6 +71,8 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanSetSymbols
 
     public Task LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         var waypoints = data.GetValueOrDefault(Symbol);
         Waypoints = waypoints.ToArray();
         DrawContent();

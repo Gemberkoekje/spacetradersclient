@@ -25,6 +25,8 @@ internal sealed class ModulesWindow : ClosableWindow, ICanSetSymbols
 
     public Task LoadData(Ship[] data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         var modules = data.First(s => s.Symbol == Symbol).Modules;
         if (Modules is not null && Modules == modules)
             return Task.CompletedTask;

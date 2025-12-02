@@ -2,6 +2,7 @@
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
@@ -18,6 +19,8 @@ internal sealed class ContractWindow : ClosableWindow
 
     public void LoadData(Contract[] data)
     {
+        if (Surface == null)
+            return;
         var contract = data.Length > 0 ? data[0] : null;
         if (contract is null)
             return;

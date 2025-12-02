@@ -25,12 +25,16 @@ internal sealed class SystemsWindow : ClosableWindow
 
     public void LoadData(SystemWaypoint[] data)
     {
+        if (Surface == null)
+            return;
         Systems = data;
         DrawContent();
     }
 
     public Task LoadData(Ship[] data)
     {
+        if (Surface == null)
+            return Task.CompletedTask;
         Ships = data;
         DrawContent();
         return Task.CompletedTask;
