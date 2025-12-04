@@ -3,6 +3,10 @@ using Qowaiv.Validation.Abstractions;
 using SadConsole;
 using SadConsole.UI;
 using SadConsole.UI.Windows;
+using SpaceTraders.Core.Models.AgentModels;
+using SpaceTraders.Core.Services;
+using SpaceTraders.UI.CustomControls;
+using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using SpaceTraders.UI.Windows;
 using System;
@@ -19,6 +23,7 @@ public class RootScreen : ScreenObject, IDisposable
     public List<Window> Windows = [];
     private RootWindow _rootWindow;
     private GlyphSelectPopup _glyphWindow;
+    protected Dictionary<string, (CustomLabel Label, (int X, int Y) Location)> RightJustifiedBinds { get; init; } = new();
 
     private string? _mousePos { get; set; }
 
@@ -35,6 +40,16 @@ public class RootScreen : ScreenObject, IDisposable
         ServiceProvider = serviceProvider;
 
         Children.Add(_mainSurface);
+        RightJustifiedBinds.Add("TimeLabel", (_mainSurface.Controls.AddLabel("Current UTC Time:", Game.Instance.ScreenCellsX - 20, 1), (20, 1)));
+        RightJustifiedBinds.Add("Time", (_mainSurface.Controls.AddLabel("[Time]", Game.Instance.ScreenCellsX - 2, 1), (2, 1)));
+        RightJustifiedBinds.Add("LoggedInAsLabel", (_mainSurface.Controls.AddLabel("Logged in as:", Game.Instance.ScreenCellsX - 20, 2), (20, 2)));
+        RightJustifiedBinds.Add("LoggedInAs", (_mainSurface.Controls.AddLabel("[name]", Game.Instance.ScreenCellsX - 2, 2), (2, 2)));
+        RightJustifiedBinds.Add("CreditsLabel", (_mainSurface.Controls.AddLabel("Credits:", Game.Instance.ScreenCellsX - 20, 3), (20, 3)));
+        RightJustifiedBinds.Add("Credits", (_mainSurface.Controls.AddLabel("[Credits]", Game.Instance.ScreenCellsX - 2, 3), (2, 3)));
+        foreach (var bind in RightJustifiedBinds.Values)
+        {
+            bind.Label.Position = (Game.Instance.ScreenCellsX - (bind.Location.X + bind.Label.ActualWidth), bind.Location.Y);
+        }
         _rootWindow = new RootWindow(this);
         _mainSurface.Children.Add(_rootWindow);
         _rootWindow.Show();
@@ -43,6 +58,29 @@ public class RootScreen : ScreenObject, IDisposable
         monoGameInstance.WindowResized += MonoGameInstance_WindowResized;
         _glyphWindow = new SadConsole.UI.Windows.GlyphSelectPopup(19, 25, _mainSurface.Font, _mainSurface.FontSize);
         _mainSurface.Children.Add(_glyphWindow);
+        ServiceProvider.GetRequiredService<AgentService>().Updated += LoadData;
+    }
+
+    public void LoadData(Agent? data)
+    {
+        RightJustifiedBinds["LoggedInAs"].Label.SetData([$"{data.Symbol}"]);
+        RightJustifiedBinds["Credits"].Label.SetData([$"{data.Credits:#,###}"]);
+        UpdateRightJustifiableBinds();
+    }
+
+    public void UpdateClock(DateTime dateTime)
+    {
+        RightJustifiedBinds["Time"].Label.SetData([$"{dateTime: d-M-yyyy HH:mm:ss}"]);
+        UpdateRightJustifiableBinds();
+    }
+
+    private void UpdateRightJustifiableBinds()
+    {
+        var maxJustifiableJustify = Math.Max(RightJustifiedBinds["LoggedInAs"].Label.ActualWidth, Math.Max(RightJustifiedBinds["Credits"].Label.ActualWidth, RightJustifiedBinds["Time"].Label.ActualWidth));
+        RightJustifiedBinds["TimeLabel"] = (RightJustifiedBinds["TimeLabel"].Label, (maxJustifiableJustify + 3, RightJustifiedBinds["TimeLabel"].Location.Y));
+        RightJustifiedBinds["LoggedInAsLabel"] = (RightJustifiedBinds["LoggedInAsLabel"].Label, (maxJustifiableJustify + 3, RightJustifiedBinds["LoggedInAsLabel"].Location.Y));
+        RightJustifiedBinds["CreditsLabel"] = (RightJustifiedBinds["CreditsLabel"].Label, (maxJustifiableJustify + 3, RightJustifiedBinds["CreditsLabel"].Location.Y));
+        MonoGameInstance_WindowResized(null, EventArgs.Empty);
     }
 
     public virtual void Dispose()
@@ -79,6 +117,11 @@ public class RootScreen : ScreenObject, IDisposable
             width: SadConsole.Settings.Rendering.RenderWidth / root.FontSize.X,
             height: SadConsole.Settings.Rendering.RenderHeight / root.FontSize.Y,
             clear: false);
+
+        foreach (var bind in RightJustifiedBinds.Values)
+        {
+            bind.Label.Position = (root.Width - (bind.Location.X + bind.Label.ActualWidth), bind.Location.Y);
+        }
     }
 
     internal void ShowWindow<TWindow>(string[] symbols) where TWindow : Window

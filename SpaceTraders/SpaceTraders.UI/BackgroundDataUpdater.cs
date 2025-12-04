@@ -31,6 +31,10 @@ public sealed class BackgroundDataUpdater(
     ) : BackgroundService
 #pragma warning restore S107 // Methods should not have too many parameters
 {
+    private DateTime LastUpdatedDateTime { get; set; }
+
+    private DateTime LastShipUpdatedDateTime { get; set; }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await agentService.Initialize();
@@ -46,8 +50,20 @@ public sealed class BackgroundDataUpdater(
         await shipyardService.Initialize();
         while (!stoppingToken.IsCancellationRequested)
         {
-            scheduler.Enqueue(Clock.UtcNow(), async () => await UpdateSystemsForShips(shipService.GetShips().ToArray()));
-            await Task.Delay(120000, stoppingToken);
+            await UpdateClock();
+            if (LastShipUpdatedDateTime.AddSeconds(120) < Clock.UtcNow())
+            {
+                LastShipUpdatedDateTime = Clock.UtcNow();
+                scheduler.Enqueue(Clock.UtcNow(), async () => await UpdateSystemsForShips(shipService.GetShips().ToArray()));
+            }
+            try
+            {
+                await Task.Delay(1000, stoppingToken);
+            }
+            catch (TaskCanceledException)
+            {
+                // Ignore
+            }
         }
     }
 
@@ -77,7 +93,13 @@ public sealed class BackgroundDataUpdater(
             await marketService.AddWaypoint(shipyardSymbol.SystemSymbol, shipyardSymbol.WaypointSymbol);
         }
     }
-
+    private async Task UpdateClock()
+    {
+        if (LastUpdatedDateTime.Second == Clock.UtcNow().Second)
+            return;
+        rootScreen.UpdateClock(Clock.UtcNow());
+        LastUpdatedDateTime = Clock.UtcNow();
+    }
     private async Task LoadDetailsForSystems(ImmutableDictionary<string, ImmutableList<Waypoint>> waypoints)
     {
         foreach (var waypointset in waypoints)

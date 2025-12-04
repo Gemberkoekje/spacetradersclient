@@ -11140,7 +11140,7 @@ namespace SpaceTraders.Client
         /// Wether to use the FUEL thats in your cargo or not.
         /// </summary>
         [Newtonsoft.Json.JsonProperty("fromCargo", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public FromCargo FromCargo { get; set; }
+        public bool? FromCargo { get; set; }
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
 

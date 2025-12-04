@@ -6,7 +6,7 @@ namespace SpaceTraders.UI.Windows;
 
 public sealed class AgentWindow : ClosableWindow
 {
-    private Agent? _agent { get; set; }
+    private Agent? Agent { get; set; }
 
     private AgentService AgentService { get; init; }
 
@@ -15,37 +15,42 @@ public sealed class AgentWindow : ClosableWindow
     {
         AgentService = agentService;
         AgentService.Updated += LoadData;
+        DrawContent();
         LoadData(agentService.GetAgent());
     }
 
-    public void LoadData(Agent data)
+    public void LoadData(Agent? data)
     {
         if (Surface == null)
             return;
 
-        if (_agent is not null && _agent == data)
+        if (data == null)
             return;
 
-        _agent = data;
+        if (Agent is not null && Agent == data)
+            return;
+
+        Agent = data;
         Title = $"Agent: {data.Symbol}";
-        DrawContent();
+        Binds["Symbol"].SetData([$"{data.Symbol}"]);
+        Binds["ShipCount"].SetData([$"{data.ShipCount}"]);
+        Binds["Headquarters"].SetData([$"{data.Headquarters}"]);
+        Binds["Credits"].SetData([$"{data.Credits:#,###}"]);
+        Binds["StartingFaction"].SetData([$"{data.StartingFaction}"]);
+        ResizeAndRedraw();
     }
 
     private void DrawContent()
     {
-        Clean();
-        if (_agent is null)
-        {
-            Controls.AddLabel($"Agent data loading...", 2, 2);
-            ResizeAndRedraw();
-            return;
-        }
-
-        Controls.AddLabel($"Symbol: {_agent.Symbol}", 2, 2);
-        Controls.AddLabel($"ShipCount: {_agent.ShipCount}", 2, 3);
-        Controls.AddLabel($"Headquarters: {_agent.Headquarters}",2, 4);
-        Controls.AddLabel($"Credits: {_agent.Credits}", 2, 5);
-        Controls.AddLabel($"Starting faction: {_agent.StartingFaction}", 2, 6);
-        ResizeAndRedraw();
+        Controls.AddLabel($"Symbol:", "AgentSymbolLabel", 2, 2);
+        Binds.Add("Symbol",Controls.AddLabel($"Symbol", "AgentSymbol", 20, 2));
+        Controls.AddLabel($"ShipCount:", "AgentShipCountLabel", 2, 3);
+        Binds.Add("ShipCount",Controls.AddLabel($"ShipCount", "AgentShipCount", 20, 3));
+        Controls.AddLabel($"Headquarters:", "AgentHeadquartersLabel", 2, 4);
+        Binds.Add("Headquarters",Controls.AddLabel($"Headquarters", "AgentHeadquarters", 20, 4));
+        Controls.AddLabel($"Credits:", "AgentCreditsLabel", 2, 5);
+        Binds.Add("Credits",Controls.AddLabel($"Credits", "AgentCredits", 20, 5));
+        Controls.AddLabel($"Starting faction:", "AgentStartingFactionLabel", 2, 6);
+        Binds.Add("StartingFaction",Controls.AddLabel($"Starting faction", "AgentStartingFaction", 20, 6));
     }
 }

@@ -1,6 +1,8 @@
 ﻿using SadConsole.UI;
 using SadConsole.UI.Controls;
 using SpaceTraders.Core.Services;
+using SpaceTraders.UI.Interfaces;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -8,6 +10,8 @@ namespace SpaceTraders.UI.Windows;
 
 public class AutoResizableWindow : Window
 {
+    protected Dictionary<string, ICanSetData> Binds { get; init; } = new ();
+
     protected RootScreen RootScreen { get; init; }
 
     protected bool Loaded { get; set; } = false;
@@ -24,8 +28,8 @@ public class AutoResizableWindow : Window
 
     protected void ResizeAndRedraw()
     {
-        var maxwidth = Controls.Where(c => c.Name != "CloseButton").Max(c => c.Position.X + (c.Name?.Length ?? 0));
-        var maxheight = Controls.Where(c => c.Name != "CloseButton").Max(c => c.Position.Y + 1);
+        var maxwidth = Controls.Where(c => c is IHaveABottomRightCorner).Max(c => ((IHaveABottomRightCorner)c).BottomRightCorner.X);
+        var maxheight = Controls.Where(c => c is IHaveABottomRightCorner).Max(c => ((IHaveABottomRightCorner)c).BottomRightCorner.Y);
 
         Resize(maxwidth + 2, maxheight + 2, true);
         var closebutton = Controls.SingleOrDefault(c => c.Name == "CloseButton");

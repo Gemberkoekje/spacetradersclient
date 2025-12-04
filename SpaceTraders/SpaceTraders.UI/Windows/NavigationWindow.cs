@@ -4,6 +4,7 @@ using SadRogue.Primitives;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
+using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using System;
@@ -83,17 +84,12 @@ internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
         Controls.AddButton($"Dock", 2, y++, (_, _) => RootScreen.ScheduleCommand(Dock));
         Controls.AddButton($"Orbit", 2, y++, (_, _) => RootScreen.ScheduleCommand(Orbit));
         y++;
-        ListBox list = new(40, 7)
-        {
-            Name = "WaypointList",
-            DrawBorder = true,
-        };
+        Controls.AddLabel($"Waypoints:", 2, y++);
+        var list = Controls.AddListbox("WaypointList", 2, y, 40, 7);
+
         foreach (var wp in Waypoints)
             list.Items.Add(wp);
 
-        Controls.AddLabel($"Waypoints:", 2, y++);
-        list.Position = (2, y);
-        Controls.Add(list);
         y += 7;
         Controls.AddButton($"Navigate to waypoint", 2, y++, (_, _) => RootScreen.ScheduleCommand(Navigate));
         ResizeAndRedraw();
