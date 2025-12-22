@@ -32,7 +32,13 @@ internal sealed class CrewWindow : ClosableWindow, ICanSetSymbols
             return Task.CompletedTask;
         Title = $"Crew for ship {Symbol}";
         Crew = crew;
-        DrawContent();
+
+        Binds["Current"].SetData([$"{Crew.Current}"]);
+        Binds["Capacity"].SetData([$"{Crew.Capacity}"]);
+        Binds["Rotation"].SetData([$"{Crew.Rotation}"]);
+        Binds["Morale"].SetData([$"{Crew.Morale}"]);
+        Binds["Wages"].SetData([$"{Crew.Wages}"]);
+        ResizeAndRedraw();
         return Task.CompletedTask;
     }
 
@@ -44,19 +50,16 @@ internal sealed class CrewWindow : ClosableWindow, ICanSetSymbols
 
     private void DrawContent()
     {
-        Clean();
-        if (Crew is null)
-        {
-            Controls.AddLabel($"Crew data loading...", 2, 2);
-            ResizeAndRedraw();
-            return;
-        }
         var y = 2;
-        Controls.AddLabel($"Current Crew: {Crew.Current}", 2, y++);
-        Controls.AddLabel($"Crew Capacity: {Crew.Capacity}", 2, y++);
-        Controls.AddLabel($"Rotation: {Crew.Rotation}", 2, y++);
-        Controls.AddLabel($"Morale: {Crew.Morale}", 2, y++);
-        Controls.AddLabel($"Wages: {Crew.Wages}", 2, y++);
-        ResizeAndRedraw();
+        Controls.AddLabel($"Current Crew:", 2, y);
+        Binds.Add("Current", Controls.AddLabel($"Crew.Current", 20, y++));
+        Controls.AddLabel($"Crew Capacity:", 2, y);
+        Binds.Add("Capacity", Controls.AddLabel($"Crew.Capacity", 20, y++));
+        Controls.AddLabel($"Rotation:", 2, y);
+        Binds.Add("Rotation", Controls.AddLabel($"Crew.Rotation", 20, y++));
+        Controls.AddLabel($"Morale:", 2, y);
+        Binds.Add("Morale", Controls.AddLabel($"Crew.Morale", 20, y++));
+        Controls.AddLabel($"Wages:", 2, y);
+        Binds.Add("Wages", Controls.AddLabel($"Crew.Wages", 20, y++));
     }
 }

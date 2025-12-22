@@ -1,5 +1,6 @@
 ﻿using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
+using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using System.Collections.Immutable;
@@ -13,6 +14,9 @@ internal sealed class ModulesWindow : ClosableWindow, ICanSetSymbols
     private string Symbol { get; set; } = string.Empty;
 
     private ImmutableList<Module> Modules { get; set; }
+
+    private CustomListBox ModulesListBox { get; set; }
+
     private ShipService ShipService { get; init; }
 
     public ModulesWindow(RootScreen rootScreen, ShipService shipService)
@@ -32,7 +36,8 @@ internal sealed class ModulesWindow : ClosableWindow, ICanSetSymbols
             return Task.CompletedTask;
         Title = $"Modules for ship {Symbol}";
         Modules = modules;
-        DrawContent();
+        Binds["Modules"].SetData([.. Modules.Select(module => $"{module.Name} (Capacity: {module.Capacity}, Range: {module.Range})")]);
+        ResizeAndRedraw();
         return Task.CompletedTask;
     }
 
@@ -44,19 +49,20 @@ internal sealed class ModulesWindow : ClosableWindow, ICanSetSymbols
 
     private void DrawContent()
     {
-        Clean();
-        if (Modules is null)
-        {
-            Controls.AddLabel($"Modules loading...", 2, 2);
-            ResizeAndRedraw();
-            return;
-        }
         var y = 2;
-        foreach(var module in Modules)
-        {
-            Controls.AddButton($"{module.Name} (Capacity: {module.Capacity}, Range: {module.Range})", 2, y++, (_, _) => RootScreen.ShowWindow<ModuleWindow>([module.Symbol.ToString()]));
-        }
+        ModulesListBox = Controls.AddListbox($"Modules", 2, y, 80, 10);
+        Binds.Add("Modules", ModulesListBox);
+        y += 10;
+        Controls.AddButton("Show Module", 2, y++, (_, _) => OpenModule());
+    }
 
-        ResizeAndRedraw();
+    private void OpenModule()
+    {
+        var listbox = ModulesListBox;
+        if (listbox.SelectedIndex is int index and >= 0 && index < Modules.Count)
+        {
+            var module = Modules[index];
+            RootScreen.ShowWindow<ModuleWindow>([module.Symbol.ToString()]);
+        }
     }
 }

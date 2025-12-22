@@ -17,9 +17,9 @@ public class CustomLabel : Label, IHaveABottomRightCorner, ICanSetData
     {
     }
 
-    public void SetData(string[] text)
+    public void SetData(object[] text)
     {
-        DisplayText = text[0];
+        DisplayText = text[0]?.ToString() ?? string.Empty;
         Resize(ActualWidth, Height);
         IsDirty = true;
     }

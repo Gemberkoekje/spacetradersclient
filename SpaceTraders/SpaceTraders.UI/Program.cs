@@ -62,6 +62,7 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<ShipyardModulesWindow>();
         services.AddTransient<ShipyardMountsWindow>();
         services.AddTransient<MarketWindow>();
+        services.AddTransient<RouteWindow>();
 
         services.AddSingleton<BackgroundDataUpdater>();
         services.AddSingleton<Scheduler>();

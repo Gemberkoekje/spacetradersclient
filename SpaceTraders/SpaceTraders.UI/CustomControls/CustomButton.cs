@@ -13,10 +13,10 @@ public sealed class CustomButton : Button, IHaveABottomRightCorner, ICanSetData
     {
     }
 
-    public void SetData(string[] text)
+    public void SetData(object[] text)
     {
-        Text = text[0];
-        Resize(ActualWidth, Height);
+        Text = text[0]?.ToString() ?? string.Empty;
+        //Resize(ActualWidth, Height);
         IsDirty = true;
     }
 

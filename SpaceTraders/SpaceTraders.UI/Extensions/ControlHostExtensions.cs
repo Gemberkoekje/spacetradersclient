@@ -101,9 +101,9 @@ public static class ControlHostExtensions
         return button;
     }
 
-    public static CustomListBox AddListbox(this ControlHost controls, string name, int x, int y, int width, int height, Color? color = null)
+    public static CustomListBox AddListbox(this ControlHost controls, string name, int x, int y, int width, int height, bool resize = true, Color? color = null)
     {
-        var listbox = new CustomListBox(width, height)
+        var listbox = new CustomListBox(width, height, resize)
         {
             Name = name,
             Position = new Point(x, y),

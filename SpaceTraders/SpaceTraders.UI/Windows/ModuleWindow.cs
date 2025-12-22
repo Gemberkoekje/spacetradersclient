@@ -24,30 +24,33 @@ internal sealed class ModuleWindow : ClosableWindow, ICanSetSymbols
     public void SetSymbol(string[] symbols)
     {
         var module = ModuleService.GetModules().GetValueOrDefault(Enum.Parse<ModuleSymbol>(symbols[0]));
-        if (module != null)
-        {
-            Title = $"{module.Name}";
-        }
+        if (module == null)
+            return;
+        Title = $"{module.Name}";
         Module = module;
-        DrawContent();
+        Binds["Name"].SetData([$"{Module.Name}"]);
+        Binds["Capacity"].SetData([$"{Module.Capacity}"]);
+        Binds["Range"].SetData([$"{Module.Range}"]);
+        Binds["Power"].SetData([$"{Module.Requirements.Power}"]);
+        Binds["Crew"].SetData([$"{Module.Requirements.Crew}"]);
+        Binds["Slots"].SetData([$"{Module.Requirements.Slots}"]);
+        ResizeAndRedraw();
     }
 
     private void DrawContent()
     {
-        Clean();
-        if (Module is null)
-        {
-            Controls.AddLabel($"Module data loading...", 2, 2);
-            ResizeAndRedraw();
-            return;
-        }
         var y = 2;
-        Controls.AddLabel($"Name: {Module.Name}", 2, y++);
-        Controls.AddLabel($"Capacity: {Module.Capacity}", 2, y++);
-        Controls.AddLabel($"Range: {Module.Range}", 2, y++);
-        Controls.AddLabel($"Power Requirements: {Module.Requirements.Power}", 2, y++);
-        Controls.AddLabel($"Crew Requirements: {Module.Requirements.Crew}", 2, y++);
-        Controls.AddLabel($"Slots Requirements: {Module.Requirements.Slots}", 2, y++);
-        ResizeAndRedraw();
+        Controls.AddLabel($"Name:", 2, y);
+        Binds.Add("Name", Controls.AddLabel($"Module.Name", 22, y++));
+        Controls.AddLabel($"Capacity:", 2, y);
+        Binds.Add("Capacity", Controls.AddLabel($"Module.Capacity", 22, y++));
+        Controls.AddLabel($"Range:", 2, y);
+        Binds.Add("Range", Controls.AddLabel($"Module.Range", 22, y++));
+        Controls.AddLabel($"Power Requirements:", 2, y);
+        Binds.Add("Power", Controls.AddLabel($"Module.Requirements.Power", 22, y++));
+        Controls.AddLabel($"Crew Requirements:", 2, y);
+        Binds.Add("Crew", Controls.AddLabel($"Module.Requirements.Crew", 22, y++));
+        Controls.AddLabel($"Slots Requirements:", 2, y);
+        Binds.Add("Slots", Controls.AddLabel($"Module.Requirements.Slots", 22, y++));
     }
 }

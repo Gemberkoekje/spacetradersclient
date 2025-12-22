@@ -15,18 +15,20 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
+internal sealed class RouteWindow : ClosableWindow, ICanSetSymbols
 {
     private string Symbol { get; set; } = string.Empty;
 
     private ImmutableList<WaypointDistance> Waypoints { get; set; } = [];
+
+    private CustomListBox WaypointsListBox { get; set; }
 
     private Navigation? Navigation { get; set; }
     private ShipService ShipService { get; init; }
     private ShipNavService ShipNavService { get; init; }
     private WaypointService WaypointService { get; init; }
 
-    public NavigationWindow(RootScreen rootScreen, ShipService shipService, ShipNavService shipNavService, WaypointService waypointService)
+    public RouteWindow(RootScreen rootScreen, ShipService shipService, ShipNavService shipNavService, WaypointService waypointService)
         : base(rootScreen, 52, 20)
     {
         shipService.Updated += LoadData;
@@ -40,7 +42,9 @@ internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
     {
         if (Surface == null)
             return Task.CompletedTask;
-        var navigation = data.First(s => s.Symbol == Symbol).Navigation;
+        var navigation = data.FirstOrDefault(s => s.Symbol == Symbol)?.Navigation;
+        if (navigation == null)
+            return Task.CompletedTask;
         if (Navigation is not null && Navigation == navigation)
             return Task.CompletedTask;
         Title = $"Navigation for ship {Symbol}";
@@ -49,10 +53,18 @@ internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
         var orderedWaypoints = waypointsForSystem.OrderBy(wp => GetDistance((wp.X, wp.Y)));
         Waypoints = orderedWaypoints.Select(wp => new WaypointDistance(wp.Symbol, GetDistance((wp.X, wp.Y)))).ToImmutableList();
 
-        Binds["SystemSymbol"].SetData([$"{Navigation.SystemSymbol}"]);
-        Binds["WaypointSymbol"].SetData([$"{Navigation.WaypointSymbol}"]);
-        Binds["Status"].SetData([$"{BuildStatus(navigation)}"]);
-        Binds["FlightMode"].SetData([$"{Navigation.FlightMode}"]);
+        Binds["Destination.Symbol"].SetData([$"{Navigation.Route.Destination.Symbol}"]);
+        Binds["Destination.SystemSymbol"].SetData([$"{Navigation.Route.Destination.SystemSymbol}"]);
+        Binds["Destination.Type"].SetData([$"{Navigation.Route.Destination.Type}"]);
+
+        Binds["Origin.Symbol"].SetData([$"{Navigation.Route.Origin.Symbol}"]);
+        Binds["Origin.SystemSymbol"].SetData([$"{Navigation.Route.Origin.SystemSymbol}"]);
+        Binds["Origin.Type"].SetData([$"{Navigation.Route.Origin.Type}"]);
+
+        Binds["DepartureTime"].SetData([$"{Navigation.Route.DepartureTime:yyyy-MM-dd HH:mm:ss}"]);
+        Binds["ArrivalTime"].SetData([$"{Navigation.Route.ArrivalTime:yyyy-MM-dd HH:mm:ss}"]);
+
+        Binds["WaypointList"].SetData([.. Waypoints.Select(w => w)]);
 
         ResizeAndRedraw();
         return Task.CompletedTask;
@@ -64,69 +76,36 @@ internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
         LoadData(ShipService.GetShips().ToArray());
     }
 
-    private static string BuildStatus(Navigation navigation)
-    {
-        if (navigation.Status == ShipNavStatus.Docked)
-            return $"Docked at {navigation.WaypointSymbol}";
-        if (navigation.Status == ShipNavStatus.InOrbit)
-            return $"In orbit of {navigation.WaypointSymbol}";
-        if (navigation.Status == ShipNavStatus.InTransit)
-        {
-            return $"In transit from {navigation.Route.Origin.Symbol} to {navigation.Route.Destination.Symbol}, arriving at {navigation.Route.ArrivalTime:yyyy-MM-dd HH:mm}";
-        }
-        return $"{navigation.Status}";
-    }
-
     private void DrawContent()
     {
         var y = 2;
-        Controls.AddLabel($"System:", 2, y);
-        Binds.Add("SystemSymbol", Controls.AddButton($"Navigation.SystemSymbol", 15, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow>([Navigation.SystemSymbol])));
+        Controls.AddLabel($"Destination:", 2, y++);
         Controls.AddLabel($"Waypoint:", 2, y);
-        Binds.Add("WaypointSymbol", Controls.AddLabel($"Navigation.WaypointSymbol", 15, y++));
-        Controls.AddLabel($"Status:", 2, y);
-        Binds.Add("Status", Controls.AddLabel($"Navigation.Status", 15, y++));
-        Controls.AddLabel($"Flight Mode:", 2, y);
-        Binds.Add("FlightMode", Controls.AddLabel($"Navigation.FlightMode", 15, y++));
-        Controls.AddButton($"Route", 15, y++, (_, _) => RootScreen.ShowWindow<RouteWindow>([Symbol]));
-
-
-
-        /*
-        Clean();
-        if (Navigation is null)
-        {
-            Controls.AddLabel($"Navigation data loading...", 2, 2);
-            ResizeAndRedraw();
-            return;
-        }
-        var y = 2;
+        Binds.Add("Destination.Symbol", Controls.AddLabel($"Navigation.Route.Destination.Symbol", 20, y++));
         Controls.AddLabel($"System:", 2, y);
-        Controls.AddButton($"{Navigation.SystemSymbol}", 10, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow>([Navigation.SystemSymbol]));
-        Controls.AddLabel($"Waypoint: {Navigation.WaypointSymbol}", 2, y++);
-        Controls.AddLabel($"Destination: {Navigation.Route.Destination.Symbol}", 2, y++);
-        Controls.AddLabel($"Destination: {Navigation.Route.Destination.SystemSymbol}", 2, y++);
-        Controls.AddLabel($"Destination: {Navigation.Route.Destination.Type}", 2, y++);
-        Controls.AddLabel($"Origin: {Navigation.Route.Origin.Symbol}", 2, y++);
-        Controls.AddLabel($"Origin: {Navigation.Route.Origin.SystemSymbol}", 2, y++);
-        Controls.AddLabel($"Origin: {Navigation.Route.Origin.Type}", 2, y++);
-        Controls.AddLabel($"DepartureTime: {Navigation.Route.DepartureTime}", 2, y++);
-        Controls.AddLabel($"ArrivalTime: {Navigation.Route.ArrivalTime}", 2, y++);
-        Controls.AddLabel($"Status: {Navigation.Status}", 2, y++);
-        Controls.AddLabel($"FlightMode: {Navigation.FlightMode}", 2, y++);
+        Binds.Add("Destination.SystemSymbol", Controls.AddLabel($"Navigation.Route.Destination.SystemSymbol", 20, y++));
+        Controls.AddLabel($"Type:", 2, y);
+        Binds.Add("Destination.Type", Controls.AddLabel($"Navigation.Route.Destination.Type", 20, y++));
+        y++;
+        Controls.AddLabel($"Origin:", 2, y++);
+        Controls.AddLabel($"Waypoint:", 2, y);
+        Binds.Add("Origin.Symbol", Controls.AddLabel($"Navigation.Route.Origin.Symbol", 20, y++));
+        Controls.AddLabel($"System:", 2, y);
+        Binds.Add("Origin.SystemSymbol", Controls.AddLabel($"Navigation.Route.Origin.SystemSymbol", 20, y++));
+        Controls.AddLabel($"Type:", 2, y);
+        Binds.Add("Origin.Type", Controls.AddLabel($"Navigation.Route.Origin.Type", 20, y++));
+        Controls.AddLabel($"Departure time:", 2, y);
+        Binds.Add("DepartureTime", Controls.AddLabel($"Navigation.Route.DepartureTime", 20, y++));
+        Controls.AddLabel($"Arrival time:", 2, y);
+        Binds.Add("ArrivalTime", Controls.AddLabel($"Navigation.Route.ArrivalTime", 20, y++));
         y++;
         Controls.AddButton($"Dock", 2, y++, (_, _) => RootScreen.ScheduleCommand(Dock));
         Controls.AddButton($"Orbit", 2, y++, (_, _) => RootScreen.ScheduleCommand(Orbit));
         y++;
-        Controls.AddLabel($"Waypoints:", 2, y++);
-        var list = Controls.AddListbox("WaypointList", 2, y, 40, 7);
-
-        foreach (var wp in Waypoints)
-            list.Items.Add(wp);
-
-        y += 7;
+        WaypointsListBox = Controls.AddListbox("WaypointList", 2, y, 40, 7);
+        Binds.Add("WaypointList", WaypointsListBox);
+        y+= 7;
         Controls.AddButton($"Navigate to waypoint", 2, y++, (_, _) => RootScreen.ScheduleCommand(Navigate));
-        ResizeAndRedraw();*/
     }
 
     private async Task Dock()
@@ -144,7 +123,7 @@ internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
 
     private async Task Navigate()
     {
-        var list = Controls.FirstOrDefault(c => c.Name == "WaypointList") as ListBox;
+        var list = WaypointsListBox;
         var selectedWaypoint = list.SelectedItem as WaypointDistance;
         var result = await ShipNavService.Navigate(Symbol, selectedWaypoint.Symbol);
         if (result.IsValid)

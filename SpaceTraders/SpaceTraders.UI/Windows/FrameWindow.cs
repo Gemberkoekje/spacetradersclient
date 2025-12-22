@@ -27,30 +27,40 @@ internal sealed class FrameWindow : ClosableWindow, ICanSetSymbols
         if (frame != null)
         {
             Title = $"{frame.Name}";
+            Frame = frame;
+            Binds["Name"].SetData([$"{Frame.Name}"]);
+            Binds["Condition"].SetData([$"{Frame.Condition}"]);
+            Binds["Integrity"].SetData([$"{Frame.Integrity}"]);
+            Binds["ModuleSlots"].SetData([$"{Frame.ModuleSlots}"]);
+            Binds["MountingPoints"].SetData([$"{Frame.MountingPoints}"]);
+            Binds["FuelCapacity"].SetData([$"{Frame.FuelCapacity}"]);
+            Binds["Requirements.Power"].SetData([$"{Frame.Requirements.Power}"]);
+            Binds["Requirements.Crew"].SetData([$"{Frame.Requirements.Crew}"]);
+            Binds["Requirements.Slots"].SetData([$"{Frame.Requirements.Slots}"]);
+            ResizeAndRedraw();
         }
-        Frame = frame;
-        DrawContent();
     }
 
     private void DrawContent()
     {
-        Clean();
-        if (Frame is null)
-        {
-            Controls.AddLabel($"Frame data loading...", 2, 2);
-            ResizeAndRedraw();
-            return;
-        }
         var y = 2;
-        Controls.AddLabel($"Name: {Frame.Name}", 2, y++);
-        Controls.AddLabel($"Condition: {Frame.Condition}", 2, y++);
-        Controls.AddLabel($"Integrity: {Frame.Integrity}", 2, y++);
-        Controls.AddLabel($"ModuleSlots: {Frame.ModuleSlots}", 2, y++);
-        Controls.AddLabel($"MountingPoints: {Frame.MountingPoints}", 2, y++);
-        Controls.AddLabel($"FuelCapacity: {Frame.FuelCapacity}", 2, y++);
-        Controls.AddLabel($"Power Requirements: {Frame.Requirements.Power}", 2, y++);
-        Controls.AddLabel($"Crew Requirements: {Frame.Requirements.Crew}", 2, y++);
-        Controls.AddLabel($"Slots Requirements: {Frame.Requirements.Slots}", 2, y++);
-        ResizeAndRedraw();
+        Controls.AddLabel($"Name:", 2, y);
+        Binds.Add("Name", Controls.AddLabel($"Frame.Name", 25, y++));
+        Controls.AddLabel($"Condition:", 2, y);
+        Binds.Add("Condition", Controls.AddLabel($"Frame.Condition", 25, y++));
+        Controls.AddLabel($"Integrity:", 2, y);
+        Binds.Add("Integrity", Controls.AddLabel($"Frame.Integrity", 25, y++));
+        Controls.AddLabel($"Module slots:", 2, y);
+        Binds.Add("ModuleSlots", Controls.AddLabel($"Frame.ModuleSlots", 25, y++));
+        Controls.AddLabel($"Mounting points:", 2, y);
+        Binds.Add("MountingPoints", Controls.AddLabel($"Frame.MountingPoints", 25, y++));
+        Controls.AddLabel($"Fuel capacity:", 2, y);
+        Binds.Add("FuelCapacity", Controls.AddLabel($"Frame.FuelCapacity", 25, y++));
+        Controls.AddLabel($"Power Requirements:", 2, y);
+        Binds.Add("Requirements.Power", Controls.AddLabel($"Frame.Requirements.Power", 25, y++));
+        Controls.AddLabel($"Crew Requirements:", 2, y);
+        Binds.Add("Requirements.Crew", Controls.AddLabel($"Frame.Requirements.Crew", 25, y++));
+        Controls.AddLabel($"Slots Requirements:", 2, y);
+        Binds.Add("Requirements.Slots", Controls.AddLabel($"Frame.Requirements.Slots", 25, y++));
     }
 }

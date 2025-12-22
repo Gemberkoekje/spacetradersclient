@@ -2,5 +2,5 @@
 
 public interface ICanSetData
 {
-    public void SetData(string[] text);
+    public void SetData(object[] text);
 }
