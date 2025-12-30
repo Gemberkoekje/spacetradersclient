@@ -15,18 +15,32 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI;
 
-public class RootScreen : ScreenObject, IDisposable
+/// <summary>
+/// The root screen for the SpaceTraders UI application.
+/// </summary>
+public sealed class RootScreen : ScreenObject, IDisposable
 {
     private readonly ControlsConsole _mainSurface;
-    IServiceProvider ServiceProvider { get; init; }
-    private bool disposed;
-    public List<Window> Windows = [];
-    private RootWindow _rootWindow;
-    private GlyphSelectPopup _glyphWindow;
-    protected Dictionary<string, (CustomLabel Label, (int X, int Y) Location)> RightJustifiedBinds { get; init; } = new();
 
-    private string? _mousePos { get; set; }
+    private IServiceProvider ServiceProvider { get; init; }
 
+    private bool _disposed;
+
+    /// <summary>
+    /// Gets the list of open windows.
+    /// </summary>
+    public List<Window> Windows { get; } = [];
+
+    private readonly RootWindow _rootWindow;
+
+    private readonly GlyphSelectPopup _glyphWindow;
+
+    private Dictionary<string, (CustomLabel Label, (int X, int Y) Location)> RightJustifiedBinds { get; init; } = new ();
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RootScreen"/> class.
+    /// </summary>
+    /// <param name="serviceProvider">The service provider.</param>
     public RootScreen(IServiceProvider serviceProvider)
     {
 #pragma warning disable S3010 // Static fields should not be updated in constructors
@@ -61,13 +75,21 @@ public class RootScreen : ScreenObject, IDisposable
         ServiceProvider.GetRequiredService<AgentService>().Updated += LoadData;
     }
 
+    /// <summary>
+    /// Loads data for the logged-in agent.
+    /// </summary>
+    /// <param name="data">The agent data.</param>
     public void LoadData(Agent? data)
     {
-        RightJustifiedBinds["LoggedInAs"].Label.SetData([$"{data.Symbol}"]);
-        RightJustifiedBinds["Credits"].Label.SetData([$"{data.Credits:#,###}"]);
+        RightJustifiedBinds["LoggedInAs"].Label.SetData([$"{data?.Symbol}"]);
+        RightJustifiedBinds["Credits"].Label.SetData([$"{data?.Credits:#,###}"]);
         UpdateRightJustifiableBinds();
     }
 
+    /// <summary>
+    /// Updates the clock display.
+    /// </summary>
+    /// <param name="dateTime">The current date and time.</param>
     public void UpdateClock(DateTime dateTime)
     {
         RightJustifiedBinds["Time"].Label.SetData([$"{dateTime: d-M-yyyy HH:mm:ss}"]);
@@ -83,29 +105,20 @@ public class RootScreen : ScreenObject, IDisposable
         MonoGameInstance_WindowResized(null, EventArgs.Empty);
     }
 
-    public virtual void Dispose()
+    /// <summary>
+    /// Disposes of the root screen and all its resources.
+    /// </summary>
+    public void Dispose()
     {
-        if (disposed)
+        if (_disposed)
         {
             return;
         }
 
-        disposed = true;
+        _disposed = true;
         _mainSurface.Dispose();
         _rootWindow.Dispose();
         _glyphWindow.Dispose();
-        foreach (var window in Windows)
-        {
-            window.Dispose();
-        }
-    }
-
-    protected virtual void ThrowIfDisposed()
-    {
-        if (disposed)
-        {
-            throw new ObjectDisposedException(GetType().FullName);
-        }
     }
 
     private void MonoGameInstance_WindowResized(object? sender, EventArgs e)
@@ -166,9 +179,12 @@ public class RootScreen : ScreenObject, IDisposable
         window.Hide();
         _mainSurface.Children.Remove(window);
         Windows.Remove(window);
-        window.Dispose();
     }
 
+    /// <summary>
+    /// Schedules a command to be executed by the background updater.
+    /// </summary>
+    /// <param name="command">The command to execute.</param>
     public void ScheduleCommand(Func<Task> command)
     {
         var backgroundUpdater = ServiceProvider.GetRequiredService<BackgroundDataUpdater>();

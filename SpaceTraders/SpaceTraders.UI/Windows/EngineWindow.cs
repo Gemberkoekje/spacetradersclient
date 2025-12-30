@@ -1,46 +1,44 @@
-﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System;
 using System.Collections.Immutable;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class EngineWindow : ClosableWindow, ICanSetSymbols
+internal sealed class EngineWindow : DataBoundWindowWithSymbols<Engine>
 {
-    private Engine? Engine { get; set; }
-
-    private ModuleService ModuleService { get; init; }
+    private readonly ModuleService _moduleService;
 
     public EngineWindow(RootScreen rootScreen, ModuleService moduleService)
         : base(rootScreen, 52, 20)
     {
-        ModuleService = moduleService;
-        DrawContent();
+        _moduleService = moduleService;
+
+        Initialize();
     }
 
-    public void SetSymbol(string[] symbols)
+    protected override Engine? FetchData()
     {
-        var engine = ModuleService.GetEngines().GetValueOrDefault(Enum.Parse<EngineSymbol>(symbols[0]));
-        if (engine != null)
-        {
-            Title = $"{engine.Name}";
-            Engine = engine;
-            Binds["Name"].SetData([$"{Engine.Name}"]);
-            Binds["Condition"].SetData([$"{Engine.Condition}"]);
-            Binds["Integrity"].SetData([$"{Engine.Integrity}"]);
-            Binds["Speed"].SetData([$"{Engine.Speed}"]);
-            Binds["Requirements.Power"].SetData([$"{Engine.Requirements.Power}"]);
-            Binds["Requirements.Crew"].SetData([$"{Engine.Requirements.Crew}"]);
-            Binds["Requirements.Slots"].SetData([$"{Engine.Requirements.Slots}"]);
-            Binds["Quality"].SetData([$"{Engine.Quality}"]);
-            ResizeAndRedraw();
-        }
+        if (string.IsNullOrEmpty(Symbol)) return null;
+        return _moduleService.GetEngines().GetValueOrDefault(Enum.Parse<EngineSymbol>(Symbol));
     }
 
-    private void DrawContent()
+    protected override void BindData(Engine data)
+    {
+        Title = $"{data.Name}";
+        Binds["Name"].SetData([$"{data.Name}"]);
+        Binds["Condition"].SetData([$"{data.Condition}"]);
+        Binds["Integrity"].SetData([$"{data.Integrity}"]);
+        Binds["Speed"].SetData([$"{data.Speed}"]);
+        Binds["Requirements.Power"].SetData([$"{data.Requirements.Power}"]);
+        Binds["Requirements.Crew"].SetData([$"{data.Requirements.Crew}"]);
+        Binds["Requirements.Slots"].SetData([$"{data.Requirements.Slots}"]);
+        Binds["Quality"].SetData([$"{data.Quality}"]);
+    }
+
+    protected override void DrawContent()
     {
         var y = 2;
         Controls.AddLabel($"Name:", 2, y);
@@ -58,6 +56,6 @@ internal sealed class EngineWindow : ClosableWindow, ICanSetSymbols
         Controls.AddLabel($"Slots Requirements:", 2, y);
         Binds.Add("Requirements.Slots", Controls.AddLabel($"Engine.Requirements.Slots", 25, y++));
         Controls.AddLabel($"Quality:", 2, y);
-        Binds.Add("Quality", Controls.AddLabel($"Engine.Quality", 25, y++));
+        Binds.Add("Quality", Controls.AddLabel($"Engine.Quality", 25, y));
     }
 }

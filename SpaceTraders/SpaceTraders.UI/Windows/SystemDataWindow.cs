@@ -1,4 +1,3 @@
-﻿using Microsoft.Xna.Framework.Media;
 using SadConsole;
 using SadRogue.Primitives;
 using SpaceTraders.Core.Models.ShipModels;
@@ -6,8 +5,6 @@ using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -15,117 +12,87 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class SystemDataWindow : ClosableWindow, ICanSetSymbols
+internal sealed class SystemDataWindow : DataBoundWindowWithSymbols<SystemWaypoint>
 {
-    private string Symbol { get; set; } = string.Empty;
+    private readonly ShipService _shipService;
+    private readonly SystemService _systemService;
+    private readonly WaypointService _waypointService;
 
-    private SystemWaypoint? System { get; set; }
-
-    private Waypoint[] Waypoints { get; set; } = [];
-
-    private CustomListBox<WaypointListValue> WaypointListBox { get; set; }
-
-    private Ship[] Ships { get; set; } = [];
-
-    private readonly ShipService ShipService;
-    private readonly SystemService SystemService;
-    private readonly WaypointService WaypointService;
+    private CustomListBox<WaypointListValue>? _waypointListBox;
 
     public SystemDataWindow(RootScreen rootScreen, ShipService shipService, SystemService systemService, WaypointService waypointService)
         : base(rootScreen, 45, 30)
     {
-        shipService.Updated += LoadData;
-        systemService.Updated += LoadData;
-        waypointService.Updated += LoadData;
-        ShipService = shipService;
-        SystemService = systemService;
-        WaypointService = waypointService;
-        DrawContent();
+        _shipService = shipService;
+        _systemService = systemService;
+        _waypointService = waypointService;
+
+        SubscribeToEvent<ImmutableArray<SystemWaypoint>>(
+            handler => systemService.Updated += handler,
+            handler => systemService.Updated -= handler,
+            OnServiceUpdatedSync);
+
+        SubscribeToEvent<ImmutableArray<Ship>>(
+            handler => shipService.Updated += handler,
+            handler => shipService.Updated -= handler,
+            OnServiceUpdated);
+
+        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Waypoint>>>(
+            handler => waypointService.Updated += handler,
+            handler => waypointService.Updated -= handler,
+            OnWaypointsUpdated);
+
+        Initialize();
     }
 
-    public void SetSymbol(string[] symbols)
-    {
-        Symbol = symbols[0];
-        LoadData(SystemService.GetSystems().ToArray());
-        LoadData(WaypointService.GetWaypoints());
-        LoadData(ShipService.GetShips().ToArray());
-    }
+    protected override SystemWaypoint? FetchData() =>
+        _systemService.GetSystems().FirstOrDefault(d => d.Symbol == Symbol);
 
-    public void LoadData(SystemWaypoint[] data)
+    protected override void BindData(SystemWaypoint data)
     {
-        if (Surface == null)
-            return;
-        var system = data.FirstOrDefault(d => d.Symbol == Symbol);
-        if (System is not null && System == system)
-            return;
-        if (system is null)
-            return;
-        System = system;
-        Title = $"System {System.Name}";
-        RebindAndResize();
-    }
+        Title = $"System {data.Name}";
 
-    public Task LoadData(Ship[] data)
-    {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var relevantData = data.Where(d => d.Navigation.SystemSymbol == System.Symbol).ToArray();
-        if (Ships.All(s => s == relevantData.FirstOrDefault(d => d.Symbol == s.Symbol)) && relevantData.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
-            return Task.CompletedTask;
-        Ships = relevantData;
-        RebindAndResize();
-        return Task.CompletedTask;
-    }
+        // Update waypoints and ships
+        var waypoints = _waypointService.GetWaypoints().GetValueOrDefault(Symbol);
+        var ships = _shipService.GetShips().Where(d => d.Navigation.SystemSymbol == data.Symbol).ToImmutableArray();
 
-    private void RebindAndResize()
-    {
-        if (System is null)
-            return;
-        Binds["Symbol"].SetData([$"{System.Symbol}"]);
-        Binds["Name"].SetData([$"{System.Name}"]);
-        Binds["Constellation"].SetData([$"{System.Constellation}"]);
-        Binds["Sector"].SetData([$"{System.SectorSymbol}"]);
-        Binds["Type"].SetData([$"{System.SystemType}"]);
-        Binds["Position"].SetData([$"{System.X:0,000}, {System.Y:0,000}"]);
-        Binds["Waypoints"].SetData([$"{Waypoints.Count()}"]);
-        Binds["Factions"].SetData([$"{System.Factions.Count()}"]);
+        Binds["Symbol"].SetData([$"{data.Symbol}"]);
+        Binds["Name"].SetData([$"{data.Name}"]);
+        Binds["Constellation"].SetData([$"{data.Constellation}"]);
+        Binds["Sector"].SetData([$"{data.SectorSymbol}"]);
+        Binds["Type"].SetData([$"{data.SystemType}"]);
+        Binds["Position"].SetData([$"{data.X:0,000}, {data.Y:0,000}"]);
+        Binds["Waypoints"].SetData([$"{waypoints.Length}"]);
+        Binds["Factions"].SetData([$"{data.Factions.Length}"]);
 
         var waypointdata = new List<WaypointListValue>();
 
-        foreach (var wp in Waypoints.Where(wp => wp.Type != Core.Enums.WaypointType.Asteroid).OrderBy(w => w.Symbol))
+        foreach (var wp in waypoints.Where(wp => wp.Type != Core.Enums.WaypointType.Asteroid).OrderBy(w => w.Symbol))
         {
-            waypointdata.Add(new WaypointListValue(wp, null, Ships.Any(s => s.Navigation.WaypointSymbol == wp.Symbol)));
-            foreach (var ship in Ships.Where(s => s.Navigation.WaypointSymbol == wp.Symbol))
+            waypointdata.Add(new WaypointListValue(wp, null, ships.Any(s => s.Navigation.WaypointSymbol == wp.Symbol)));
+            foreach (var ship in ships.Where(s => s.Navigation.WaypointSymbol == wp.Symbol))
             {
                 waypointdata.Add(new WaypointListValue(wp, ship, true));
             }
         }
-        foreach (var wp in Waypoints.Where(wp => wp.Type == Core.Enums.WaypointType.Asteroid).OrderBy(w => w.Symbol))
+        foreach (var wp in waypoints.Where(wp => wp.Type == Core.Enums.WaypointType.Asteroid).OrderBy(w => w.Symbol))
         {
-            waypointdata.Add(new WaypointListValue(wp, null, Ships.Any(s => s.Navigation.WaypointSymbol == wp.Symbol)));
-            foreach (var ship in Ships.Where(s => s.Navigation.WaypointSymbol == wp.Symbol))
+            waypointdata.Add(new WaypointListValue(wp, null, ships.Any(s => s.Navigation.WaypointSymbol == wp.Symbol)));
+            foreach (var ship in ships.Where(s => s.Navigation.WaypointSymbol == wp.Symbol))
             {
                 waypointdata.Add(new WaypointListValue(wp, ship, true));
             }
         }
-        WaypointListBox.SetCustomData([.. waypointdata]);
-
-        ResizeAndRedraw();
+        _waypointListBox?.SetCustomData([.. waypointdata]);
     }
 
-    public Task LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
+    private Task OnWaypointsUpdated(ImmutableDictionary<string, ImmutableArray<Waypoint>> _)
     {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var waypoints = data.GetValueOrDefault(Symbol);
-        if (waypoints is null)
-            return Task.CompletedTask;
-        Waypoints = waypoints.ToArray();
-        RebindAndResize();
+        RefreshData();
         return Task.CompletedTask;
     }
 
-    private void DrawContent()
+    protected override void DrawContent()
     {
         var y = 2;
         Controls.AddLabel($"Symbol:", 2, y);
@@ -144,20 +111,19 @@ internal sealed class SystemDataWindow : ClosableWindow, ICanSetSymbols
         Binds.Add("Waypoints", Controls.AddLabel($"System.Waypoints.Count", 21, y++));
         Controls.AddLabel($"Factions:", 2, y);
         Binds.Add("Factions", Controls.AddLabel($"System.Factions.Count", 21, y++));
-        Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow>([System.Symbol]));
+        Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow>([CurrentData!.Symbol]));
         y++;
 
         Controls.AddLabel($"Markets & Shipyards:", 2, y++);
-        WaypointListBox = Controls.AddListbox<WaypointListValue>($"WaypointList", 2, y, 80, 25);
-        Binds.Add("WaypointList", WaypointListBox);
+        _waypointListBox = Controls.AddListbox<WaypointListValue>($"WaypointList", 2, y, 80, 25);
+        Binds.Add("WaypointList", _waypointListBox);
         y += 25;
-        Controls.AddButton("Show Waypoint", 2, y++, (_, _) => OpenWaypoint());
+        Controls.AddButton("Show Waypoint", 2, y, (_, _) => OpenWaypoint());
     }
 
     private void OpenWaypoint()
     {
-        var listbox = WaypointListBox;
-        if (listbox.GetSelectedItem() is WaypointListValue waypoint)
+        if (_waypointListBox?.GetSelectedItem() is WaypointListValue waypoint)
         {
             if (waypoint.Ship is not null)
             {

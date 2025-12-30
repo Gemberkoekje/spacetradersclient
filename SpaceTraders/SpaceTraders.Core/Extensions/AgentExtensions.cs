@@ -1,4 +1,4 @@
-﻿using SpaceTraders.Core.Models.AgentModels;
+using SpaceTraders.Core.Models.AgentModels;
 
 namespace SpaceTraders.Core.Extensions;
 
@@ -27,5 +27,4 @@ internal static class AgentExtensions
             ShipCount = agent.ShipCount,
         };
     }
-
 }

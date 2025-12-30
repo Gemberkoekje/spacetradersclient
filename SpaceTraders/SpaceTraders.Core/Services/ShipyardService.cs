@@ -1,55 +1,83 @@
-﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.ShipyardModels;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.Core.Services;
 
+/// <summary>
+/// Service for managing shipyard data.
+/// </summary>
+/// <param name="service">The SpaceTraders API service.</param>
+/// <param name="waypointService">The waypoint service.</param>
+/// <param name="moduleService">The module service.</param>
 public sealed class ShipyardService(Client.SpaceTradersService service, WaypointService waypointService, ModuleService moduleService)
 {
-    private ImmutableDictionary<string, ImmutableList<Shipyard>> Shipyards { get; set; } = [];
+    private ImmutableDictionary<string, ImmutableArray<Shipyard>> Shipyards { get; set; } = ImmutableDictionary<string, ImmutableArray<Shipyard>>.Empty;
 
-    public event Action<ImmutableDictionary<string, ImmutableList<Shipyard>>>? Updated;
+    /// <summary>
+    /// Event raised when shipyards are updated.
+    /// </summary>
+    public event Action<ImmutableDictionary<string, ImmutableArray<Shipyard>>>? Updated;
 
-    public async Task Initialize()
+    /// <summary>
+    /// Initializes the shipyard service.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public static Task Initialize()
     {
+        // Not yet implemented
+        return Task.CompletedTask;
     }
 
-    private void Update(ImmutableDictionary<string, ImmutableList<Shipyard>> shipyards)
-    {
-        Shipyards = shipyards;
-        Updated?.Invoke(shipyards);
-    }
-
+    /// <summary>
+    /// Adds a waypoint's shipyard data.
+    /// </summary>
+    /// <param name="systemSymbol">The system symbol.</param>
+    /// <param name="waypointSymbol">The waypoint symbol.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task AddWaypoint(string systemSymbol, string waypointSymbol)
     {
-        if (!waypointService.GetWaypoints().GetValueOrDefault(systemSymbol)?.FirstOrDefault(wp => wp.Symbol == waypointSymbol)?.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Shipyard) ?? false)
+        var waypoints = waypointService.GetWaypoints().GetValueOrDefault(systemSymbol);
+        if (waypoints.IsDefault || (!waypoints.FirstOrDefault(wp => wp.Symbol == waypointSymbol)?.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Shipyard) ?? false))
+        {
             return;
+        }
+
         var shipyard = await service.EnqueueAsync((client, ct) => client.GetShipyardAsync(systemSymbol, waypointSymbol, ct));
         var systemList = Shipyards.GetValueOrDefault(systemSymbol);
-        if (systemList == null)
+        if (systemList.IsDefault)
         {
             systemList = [];
         }
+
         systemList = systemList.Add(MapShipyard(shipyard.Value.Data));
         Shipyards = Shipyards.SetItem(systemSymbol, systemList);
-        moduleService.AddEngines(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.Select(t => t.Engine))).ToImmutableArray());
-        moduleService.AddReactors(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.Select(t => t.Reactor))).ToImmutableArray());
-        moduleService.AddFrames(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.Select(t => t.Frame))).ToImmutableArray());
-        moduleService.AddModules(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.SelectMany(t => t.Modules))).ToImmutableArray());
-        moduleService.AddMounts(Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.SelectMany(t => t.Mounts))).ToImmutableArray());
+        moduleService.AddEngines([.. Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.Select(t => t.Engine)))]);
+        moduleService.AddReactors([.. Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.Select(t => t.Reactor)))]);
+        moduleService.AddFrames([.. Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.Select(t => t.Frame)))]);
+        moduleService.AddModules([.. Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.SelectMany(t => t.Modules)))]);
+        moduleService.AddMounts([.. Shipyards.SelectMany(sy => sy.Value.SelectMany(s => s.Ships.SelectMany(t => t.Mounts)))]);
         Update(Shipyards);
     }
 
-    public ImmutableDictionary<string, ImmutableList<Shipyard>> GetShipyards()
+    /// <summary>
+    /// Gets all shipyards.
+    /// </summary>
+    /// <returns>The shipyards dictionary.</returns>
+    public ImmutableDictionary<string, ImmutableArray<Shipyard>> GetShipyards()
     {
         return Shipyards;
+    }
+
+    private void Update(ImmutableDictionary<string, ImmutableArray<Shipyard>> shipyards)
+    {
+        Shipyards = shipyards;
+        Updated?.Invoke(shipyards);
     }
 
     private static Shipyard MapShipyard(Client.Shipyard w)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Extensions;
@@ -8,6 +8,11 @@ namespace SpaceTraders.UI.Extensions;
 /// </summary>
 public static class TaskExtensions
 {
+    /// <summary>
+    /// Safely fires and forgets a task, optionally handling exceptions.
+    /// </summary>
+    /// <param name="task">The task to execute.</param>
+    /// <param name="onError">Optional error handler.</param>
     public static void SafeFireAndForget(this Task task, Action<Exception>? onError = null)
     {
         if (task is null) return;

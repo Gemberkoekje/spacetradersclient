@@ -1,54 +1,43 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
-using SpaceTraders.Core.Models.SystemModels;
+using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class CrewWindow : ClosableWindow, ICanSetSymbols
+internal sealed class CrewWindow : DataBoundWindowWithSymbols<Crew>
 {
-    private string Symbol { get; set; } = string.Empty;
-
-    private Crew? Crew { get; set; }
-    private ShipService ShipService { get; init; }
+    private readonly ShipService _shipService;
 
     public CrewWindow(RootScreen rootScreen, ShipService shipService)
         : base(rootScreen, 52, 20)
     {
-        shipService.Updated += LoadData;
-        ShipService = shipService;
-        DrawContent();
+        _shipService = shipService;
+
+        SubscribeToEvent<ImmutableArray<Ship>>(
+            handler => shipService.Updated += handler,
+            handler => shipService.Updated -= handler,
+            OnServiceUpdated);
+
+        Initialize();
     }
 
-    public Task LoadData(Ship[] data)
+    protected override Crew? FetchData() =>
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol)?.Crew;
+
+    protected override void BindData(Crew data)
     {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var crew = data.First(s => s.Symbol == Symbol).Crew;
-        if (Crew is not null && Crew == crew)
-            return Task.CompletedTask;
         Title = $"Crew for ship {Symbol}";
-        Crew = crew;
-
-        Binds["Current"].SetData([$"{Crew.Current}"]);
-        Binds["Capacity"].SetData([$"{Crew.Capacity}"]);
-        Binds["Rotation"].SetData([$"{Crew.Rotation}"]);
-        Binds["Morale"].SetData([$"{Crew.Morale}"]);
-        Binds["Wages"].SetData([$"{Crew.Wages}"]);
-        ResizeAndRedraw();
-        return Task.CompletedTask;
+        Binds["Current"].SetData([$"{data.Current}"]);
+        Binds["Capacity"].SetData([$"{data.Capacity}"]);
+        Binds["Rotation"].SetData([$"{data.Rotation}"]);
+        Binds["Morale"].SetData([$"{data.Morale}"]);
+        Binds["Wages"].SetData([$"{data.Wages}"]);
     }
 
-    public void SetSymbol(string[] symbols)
-    {
-        Symbol = symbols[0];
-        LoadData(ShipService.GetShips().ToArray());
-    }
-
-    private void DrawContent()
+    protected override void DrawContent()
     {
         var y = 2;
         Controls.AddLabel($"Current Crew:", 2, y);
@@ -60,6 +49,6 @@ internal sealed class CrewWindow : ClosableWindow, ICanSetSymbols
         Controls.AddLabel($"Morale:", 2, y);
         Binds.Add("Morale", Controls.AddLabel($"Crew.Morale", 20, y++));
         Controls.AddLabel($"Wages:", 2, y);
-        Binds.Add("Wages", Controls.AddLabel($"Crew.Wages", 20, y++));
+        Binds.Add("Wages", Controls.AddLabel($"Crew.Wages", 20, y));
     }
 }

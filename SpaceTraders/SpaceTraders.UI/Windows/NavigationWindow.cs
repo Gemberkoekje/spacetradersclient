@@ -1,59 +1,58 @@
-﻿using Qowaiv.Validation.Abstractions;
+using Qowaiv.Validation.Abstractions;
 using SadConsole.UI.Controls;
 using SadRogue.Primitives;
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipModels;
-using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
-using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
+internal sealed class NavigationWindow : DataBoundWindowWithSymbols<Navigation>
 {
-    private string Symbol { get; set; } = string.Empty;
-
-    private Navigation? Navigation { get; set; }
-
-    private ShipService ShipService { get; init; }
+    private readonly ShipService _shipService;
 
     public NavigationWindow(RootScreen rootScreen, ShipService shipService)
         : base(rootScreen, 52, 20)
     {
-        shipService.Updated += LoadData;
-        ShipService = shipService;
-        DrawContent();
+        _shipService = shipService;
+
+        SubscribeToEvent<ImmutableArray<Ship>>(
+            handler => shipService.Updated += handler,
+            handler => shipService.Updated -= handler,
+            OnServiceUpdated);
+
+        Initialize();
     }
 
-    public Task LoadData(Ship[] data)
+    protected override Navigation? FetchData() =>
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol)?.Navigation;
+
+    protected override void BindData(Navigation data)
     {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var navigation = data.First(s => s.Symbol == Symbol).Navigation;
-        if (Navigation is not null && Navigation == navigation)
-            return Task.CompletedTask;
         Title = $"Navigation for ship {Symbol}";
-        Navigation = navigation;
-
-        Binds["SystemSymbol"].SetData([$"{Navigation.SystemSymbol}"]);
-        Binds["WaypointSymbol"].SetData([$"{Navigation.WaypointSymbol}"]);
-        Binds["Status"].SetData([$"{BuildStatus(navigation)}"]);
-        Binds["FlightMode"].SetData([$"{Navigation.FlightMode}"]);
-
-        ResizeAndRedraw();
-        return Task.CompletedTask;
+        Binds["SystemSymbol"].SetData([$"{data.SystemSymbol}"]);
+        Binds["WaypointSymbol"].SetData([$"{data.WaypointSymbol}"]);
+        Binds["Status"].SetData([$"{BuildStatus(data)}"]);
+        Binds["FlightMode"].SetData([$"{data.FlightMode}"]);
     }
 
-    public void SetSymbol(string[] symbols)
+    protected override void DrawContent()
     {
-        Symbol = symbols[0];
-        LoadData(ShipService.GetShips().ToArray());
+        var y = 2;
+        Controls.AddLabel($"System:", 2, y);
+        Binds.Add("SystemSymbol", Controls.AddButton($"Navigation.SystemSymbol", 15, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow>([CurrentData!.SystemSymbol])));
+        Controls.AddLabel($"Waypoint:", 2, y);
+        Binds.Add("WaypointSymbol", Controls.AddLabel($"Navigation.WaypointSymbol", 15, y++));
+        Controls.AddLabel($"Status:", 2, y);
+        Binds.Add("Status", Controls.AddLabel($"Navigation.Status", 15, y++));
+        Controls.AddLabel($"Flight Mode:", 2, y);
+        Binds.Add("FlightMode", Controls.AddLabel($"Navigation.FlightMode", 15, y++));
+        Controls.AddButton($"Route", 15, y, (_, _) => RootScreen.ShowWindow<RouteWindow>([Symbol]));
     }
 
     private static string BuildStatus(Navigation navigation)
@@ -67,19 +66,5 @@ internal sealed class NavigationWindow : ClosableWindow, ICanSetSymbols
             return $"In transit from {navigation.Route.Origin.Symbol} to {navigation.Route.Destination.Symbol}, arriving at {navigation.Route.ArrivalTime:yyyy-MM-dd HH:mm}";
         }
         return $"{navigation.Status}";
-    }
-
-    private void DrawContent()
-    {
-        var y = 2;
-        Controls.AddLabel($"System:", 2, y);
-        Binds.Add("SystemSymbol", Controls.AddButton($"Navigation.SystemSymbol", 15, y++, (_, _) => RootScreen.ShowWindow<SystemDataWindow>([Navigation.SystemSymbol])));
-        Controls.AddLabel($"Waypoint:", 2, y);
-        Binds.Add("WaypointSymbol", Controls.AddLabel($"Navigation.WaypointSymbol", 15, y++));
-        Controls.AddLabel($"Status:", 2, y);
-        Binds.Add("Status", Controls.AddLabel($"Navigation.Status", 15, y++));
-        Controls.AddLabel($"Flight Mode:", 2, y);
-        Binds.Add("FlightMode", Controls.AddLabel($"Navigation.FlightMode", 15, y++));
-        Controls.AddButton($"Route", 15, y++, (_, _) => RootScreen.ShowWindow<RouteWindow>([Symbol]));
     }
 }

@@ -15,50 +15,91 @@ namespace SpaceTraders.Core.Models.ShipModels;
 public sealed record Ship
 {
     /// <summary>
-    /// Unique ship symbol identifier.
+    /// Gets the unique ship symbol identifier.
     /// </summary>
     required public string Symbol { get; init; }
 
     /// <summary>
-    /// Registration details (name, faction and role).
+    /// Gets the registration details (name, faction and role).
     /// </summary>
     required public Registration Registration { get; init; }
 
     /// <summary>
-    /// Current navigation snapshot including route, positional status and flight mode.
+    /// Gets the current navigation snapshot including route, positional status and flight mode.
     /// </summary>
     required public Navigation Navigation { get; init; }
 
+    /// <summary>
+    /// Gets the crew information.
+    /// </summary>
     required public Crew Crew { get; init; }
 
+    /// <summary>
+    /// Gets the ship frame.
+    /// </summary>
     required public Frame Frame { get; init; }
 
+    /// <summary>
+    /// Gets the ship reactor.
+    /// </summary>
     required public Reactor Reactor { get; init; }
 
+    /// <summary>
+    /// Gets the ship engine.
+    /// </summary>
     required public Engine Engine { get; init; }
 
-    required public ImmutableList<Module> Modules { get; init; }
+    /// <summary>
+    /// Gets the ship modules.
+    /// </summary>
+    required public ImmutableArray<Module> Modules { get; init; }
 
-    required public ImmutableList<Mount> Mounts { get; init; }
+    /// <summary>
+    /// Gets the ship mounts.
+    /// </summary>
+    required public ImmutableArray<Mount> Mounts { get; init; }
 
+    /// <summary>
+    /// Gets the ship cargo.
+    /// </summary>
     required public Cargo Cargo { get; init; }
 
+    /// <summary>
+    /// Gets the ship fuel.
+    /// </summary>
     required public Fuel Fuel { get; init; }
 
+    /// <summary>
+    /// Gets the ship cooldown.
+    /// </summary>
     required public Cooldown Cooldown { get; init; }
 
-    public bool CanDock => Navigation.Status == Enums.ShipNavStatus.InOrbit;
+    /// <summary>
+    /// Gets a value indicating whether the ship can dock.
+    /// </summary>
+    public bool CanDock => Navigation.Status == ShipNavStatus.InOrbit;
 
-    public bool CanOrbit => Navigation.Status == Enums.ShipNavStatus.Docked;
+    /// <summary>
+    /// Gets a value indicating whether the ship can orbit.
+    /// </summary>
+    public bool CanOrbit => Navigation.Status == ShipNavStatus.Docked;
 
-    public bool CanNavigate => Navigation.Status == Enums.ShipNavStatus.InOrbit && Cooldown.RemainingSeconds == 0;
+    /// <summary>
+    /// Gets a value indicating whether the ship can navigate.
+    /// </summary>
+    public bool CanNavigate => Navigation.Status == ShipNavStatus.InOrbit && Cooldown.RemainingSeconds == 0;
 
+    /// <summary>
+    /// Gets the current position of the ship.
+    /// </summary>
     public (int X, int Y)? Position
     {
         get
         {
-            if (Navigation.Status != Enums.ShipNavStatus.InTransit)
+            if (Navigation.Status != ShipNavStatus.InTransit)
+            {
                 return (Navigation.Route.Destination.X, Navigation.Route.Destination.Y);
+            }
 
             var diffX = Navigation.Route.Destination.X - Navigation.Route.Origin.X;
             var diffY = Navigation.Route.Destination.Y - Navigation.Route.Origin.Y;
@@ -71,6 +112,9 @@ public sealed record Ship
         }
     }
 
+    /// <summary>
+    /// Gets the direction the ship is traveling.
+    /// </summary>
     public Direction Direction
     {
         get

@@ -1,4 +1,4 @@
-﻿using SadConsole;
+using SadConsole;
 using SadRogue.Primitives;
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipModels;
@@ -6,7 +6,6 @@ using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -15,92 +14,107 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class SystemMapWindow : ClosableWindow, ICanSetSymbols
+internal sealed class SystemMapWindow : DataBoundWindowWithSymbols<SystemWaypoint>
 {
-    private string Symbol { get; set; } = string.Empty;
+    private readonly SystemService _systemService;
+    private readonly WaypointService _waypointService;
+    private readonly ShipService _shipService;
 
-    private SystemWaypoint? System { get; set; }
-    private Waypoint[] Waypoints { get; set; } = [];
-    private Ship[] Ships { get; set; } = [];
-
-    private Dictionary<string, CustomLabel> WaypointBinds { get; set; } = new Dictionary<string, CustomLabel>();
-
-    private readonly SystemService SystemService;
-    private readonly WaypointService WaypointService;
-    private readonly ShipService ShipService;
+    private ImmutableArray<Waypoint> _waypoints = [];
+    private ImmutableArray<Ship> _ships = [];
+    private readonly Dictionary<string, CustomLabel> _waypointBinds = [];
 
     public SystemMapWindow(RootScreen rootScreen, SystemService systemService, WaypointService waypointService, ShipService shipService)
         : base(rootScreen, 45, 30)
     {
-        systemService.Updated += LoadData;
-        waypointService.Updated += LoadData;
-        shipService.Updated += LoadData;
-        SystemService = systemService;
-        WaypointService = waypointService;
-        ShipService = shipService;
-        DrawContent();
+        _systemService = systemService;
+        _waypointService = waypointService;
+        _shipService = shipService;
+
+        SubscribeToEvent<ImmutableArray<SystemWaypoint>>(
+            handler => systemService.Updated += handler,
+            handler => systemService.Updated -= handler,
+            OnServiceUpdatedSync);
+
+        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Waypoint>>>(
+            handler => waypointService.Updated += handler,
+            handler => waypointService.Updated -= handler,
+            OnWaypointsUpdated);
+
+        SubscribeToEvent<ImmutableArray<Ship>>(
+            handler => shipService.Updated += handler,
+            handler => shipService.Updated -= handler,
+            OnShipsUpdated);
+
+        Initialize();
     }
 
-    public void SetSymbol(string[] symbols)
+    protected override SystemWaypoint? FetchData() =>
+        _systemService.GetSystems().FirstOrDefault(d => d.Symbol == Symbol);
+
+    protected override void BindData(SystemWaypoint data)
     {
-        Symbol = symbols[0];
-        LoadData(WaypointService.GetWaypoints());
-        LoadData(SystemService.GetSystems().ToArray());
-        LoadData(ShipService.GetShips().ToArray());
-        DrawContent();
+        Title = $"System {data.Symbol}";
+
+        // Update waypoints and ships
+        _waypoints = _waypointService.GetWaypoints().GetValueOrDefault(Symbol);
+        _ships = [.. _shipService.GetShips().Where(d => d.Navigation.SystemSymbol == Symbol)];
+
+        if (_waypoints.IsDefault || _waypoints.Length == 0)
+            return;
+
+        var (minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY) = ComputeExtents();
+
+        MapSun(data, minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
+        MapWaypoints(minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
+        MapShips(minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
     }
 
-    public Task LoadData(Ship[] data)
+    private Task OnWaypointsUpdated(ImmutableDictionary<string, ImmutableArray<Waypoint>> _)
     {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var relevantData = data.Where(d => d.Navigation.SystemSymbol == Symbol).ToArray();
-        if (Ships.All(s => s == relevantData.FirstOrDefault(d => d.Symbol == s.Symbol)) && relevantData.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
-            return Task.CompletedTask;
-        Ships = relevantData;
+        RefreshData();
+        return Task.CompletedTask;
+    }
 
-        if (Waypoints.Length == 0)
-            return Task.CompletedTask;
-        // Compute extents.
-        int minX = Waypoints.Min(w => w.X);
-        int minY = Waypoints.Min(w => w.Y);
-        int maxX = Waypoints.Max(w => w.X);
-        int maxY = Waypoints.Max(w => w.Y);
+    private Task OnShipsUpdated(ImmutableArray<Ship> _)
+    {
+        RefreshData();
+        return Task.CompletedTask;
+    }
+
+    private (int minX, int minY, int desiredWidth, int desiredHeight, bool singleX, bool singleY, float scaleX, float scaleY, float offsetX, float offsetY) ComputeExtents()
+    {
+        int minX = _waypoints.Min(w => w.X);
+        int minY = _waypoints.Min(w => w.Y);
+        int maxX = _waypoints.Max(w => w.X);
+        int maxY = _waypoints.Max(w => w.Y);
 
         int desiredWidth = (int)(50.0 * ((float)SadConsole.Game.Instance.DefaultFont.GlyphHeight / (float)SadConsole.Game.Instance.DefaultFont.GlyphWidth));
-        int desiredHeight = 50;
-
+        const int desiredHeight = 50;
         int rangeX = maxX - minX;
         int rangeY = maxY - minY;
 
-        // Avoid divide by zero; if all X (or Y) are identical, place them centered.
         bool singleX = rangeX == 0;
         bool singleY = rangeY == 0;
 
-        // Pre-calc scaling factors (float to preserve distribution, cast later).
         float scaleX = singleX ? 0f : (desiredWidth - 1f) / rangeX;
         float scaleY = singleY ? 0f : (desiredHeight - 1f) / rangeY;
 
-        // Optional: keep aspect ratio by using the smaller scale and centering.
         float offsetX = 2f;
         float offsetY = 2f;
 
-        // Center if degenerate.
         if (singleX) offsetX = desiredWidth / 2f;
         if (singleY) offsetY = desiredHeight / 2f;
 
-        MapShips(minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
-        MapWaypoints(minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
-
-        ResizeAndRedraw();
-        return Task.CompletedTask;
-
+        return (minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
     }
 
     private void MapShips(int minX, int minY, int desiredWidth, int desiredHeight, bool singleX, bool singleY, float scaleX, float scaleY, float offsetX, float offsetY)
     {
-        foreach (var ship in Ships.Where(s => s.Navigation.Status == ShipNavStatus.InTransit))
+        foreach (var ship in _ships.Where(s => s.Navigation.Status == ShipNavStatus.InTransit))
         {
+            if (ship.Position is null) continue;
+
             float translatedX = ship.Position.Value.X - minX;
             float translatedY = ship.Position.Value.Y - minY;
 
@@ -112,7 +126,6 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanSetSymbols
                 ? (int)Math.Round(offsetY)
                 : (int)Math.Round(offsetY + translatedY * scaleY);
 
-            // Clamp just in case of rounding overflow.
             canvasX = Math.Clamp(canvasX, 0, desiredWidth - 1);
             canvasY = Math.Clamp(canvasY, 0, desiredHeight - 1);
 
@@ -129,53 +142,7 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanSetSymbols
         }
     }
 
-    public void LoadData(SystemWaypoint[] data)
-    {
-        if (Surface == null)
-            return;
-        var system = data.FirstOrDefault(d => d.Symbol == Symbol);
-        if (System is not null && System == system)
-            return;
-        if (system is null)
-        {
-            return;
-        }
-        Title = $"System {system.Symbol}";
-        System = system;
-        if (Waypoints.Length == 0)
-            return;
-        // Compute extents.
-        int minX = Waypoints.Min(w => w.X);
-        int minY = Waypoints.Min(w => w.Y);
-        int maxX = Waypoints.Max(w => w.X);
-        int maxY = Waypoints.Max(w => w.Y);
-
-        int desiredWidth = (int)(50.0 * ((float)SadConsole.Game.Instance.DefaultFont.GlyphHeight / (float)SadConsole.Game.Instance.DefaultFont.GlyphWidth));
-        int desiredHeight = 50;
-
-        int rangeX = maxX - minX;
-        int rangeY = maxY - minY;
-
-        // Avoid divide by zero; if all X (or Y) are identical, place them centered.
-        bool singleX = rangeX == 0;
-        bool singleY = rangeY == 0;
-
-        // Pre-calc scaling factors (float to preserve distribution, cast later).
-        float scaleX = singleX ? 0f : (desiredWidth - 1f) / rangeX;
-        float scaleY = singleY ? 0f : (desiredHeight - 1f) / rangeY;
-
-        // Optional: keep aspect ratio by using the smaller scale and centering.
-        float offsetX = 2f;
-        float offsetY = 2f;
-
-        // Center if degenerate.
-        if (singleX) offsetX = desiredWidth / 2f;
-        if (singleY) offsetY = desiredHeight / 2f;
-        MapSun(minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
-        ResizeAndRedraw();
-    }
-
-    private void MapSun(int minX, int minY, int desiredWidth, int desiredHeight, bool singleX, bool singleY, float scaleX, float scaleY, float offsetX, float offsetY)
+    private void MapSun(SystemWaypoint system, int minX, int minY, int desiredWidth, int desiredHeight, bool singleX, bool singleY, float scaleX, float scaleY, float offsetX, float offsetY)
     {
         float translatedX = 0 - minX;
         float translatedY = 0 - minY;
@@ -188,70 +155,25 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanSetSymbols
             ? (int)Math.Round(offsetY)
             : (int)Math.Round(offsetY + translatedY * scaleY);
 
-        // Clamp just in case of rounding overflow.
         canvasX = Math.Clamp(canvasX, 0, desiredWidth - 1);
         canvasY = Math.Clamp(canvasY, 0, desiredHeight - 1);
 
         var currentLabel = Binds.GetValueOrDefault("Sun");
         if (currentLabel is null)
         {
-            Binds.Add("Sun", Controls.AddLabel($"{StarSymbol(System.SystemType)}", canvasX - 2, canvasY, StarColor(System.SystemType)));
+            Binds.Add("Sun", Controls.AddLabel($"{StarSymbol(system.SystemType)}", canvasX - 2, canvasY, StarColor(system.SystemType)));
         }
         else
         {
-            Binds["Sun"].SetData([$"{StarSymbol(System.SystemType)}"]);
+            Binds["Sun"].SetData([$"{StarSymbol(system.SystemType)}"]);
         }
-    }
-
-    public Task LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
-    {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var waypoints = data.GetValueOrDefault(Symbol);
-        Waypoints = waypoints.ToArray();
-
-        // Compute extents.
-        int minX = Waypoints.Min(w => w.X);
-        int minY = Waypoints.Min(w => w.Y);
-        int maxX = Waypoints.Max(w => w.X);
-        int maxY = Waypoints.Max(w => w.Y);
-
-        int desiredWidth = (int)(50.0 * ((float)SadConsole.Game.Instance.DefaultFont.GlyphHeight / (float)SadConsole.Game.Instance.DefaultFont.GlyphWidth));
-        int desiredHeight = 50;
-
-        int rangeX = maxX - minX;
-        int rangeY = maxY - minY;
-
-        // Avoid divide by zero; if all X (or Y) are identical, place them centered.
-        bool singleX = rangeX == 0;
-        bool singleY = rangeY == 0;
-
-        // Pre-calc scaling factors (float to preserve distribution, cast later).
-        float scaleX = singleX ? 0f : (desiredWidth - 1f) / rangeX;
-        float scaleY = singleY ? 0f : (desiredHeight - 1f) / rangeY;
-
-        // Optional: keep aspect ratio by using the smaller scale and centering.
-        float offsetX = 2f;
-        float offsetY = 2f;
-
-        // Center if degenerate.
-        if (singleX) offsetX = desiredWidth / 2f;
-        if (singleY) offsetY = desiredHeight / 2f;
-        MapWaypoints(minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
-        if (System is not null)
-        {
-            MapSun(minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
-        }
-        MapShips(minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
-        ResizeAndRedraw();
-        return Task.CompletedTask;
     }
 
     private void MapWaypoints(int minX, int minY, int desiredWidth, int desiredHeight, bool singleX, bool singleY, float scaleX, float scaleY, float offsetX, float offsetY)
     {
-        foreach (var waypoint in Waypoints.Where(w => string.IsNullOrEmpty(w.Orbits)))
+        foreach (var waypoint in _waypoints.Where(w => string.IsNullOrEmpty(w.Orbits)))
         {
-            var hasShips = Ships.Any(s => s.Navigation.WaypointSymbol == waypoint.Symbol && s.Navigation.Status != ShipNavStatus.InTransit);
+            var hasShips = _ships.Any(s => s.Navigation.WaypointSymbol == waypoint.Symbol && s.Navigation.Status != ShipNavStatus.InTransit);
 
             float translatedX = waypoint.X - minX;
             float translatedY = waypoint.Y - minY;
@@ -264,139 +186,95 @@ internal sealed class SystemMapWindow : ClosableWindow, ICanSetSymbols
                 ? (int)Math.Round(offsetY)
                 : (int)Math.Round(offsetY + translatedY * scaleY);
 
-            // Clamp just in case of rounding overflow.
             canvasX = Math.Clamp(canvasX, 0, desiredWidth - 1);
             canvasY = Math.Clamp(canvasY, 0, desiredHeight - 1);
 
-            var currentLabel = WaypointBinds.GetValueOrDefault(waypoint.Symbol);
+            var currentLabel = _waypointBinds.GetValueOrDefault(waypoint.Symbol);
 
             if (currentLabel is null)
             {
-                WaypointBinds.Add(waypoint.Symbol, Controls.AddLabel($"{WaypointSymbol(waypoint.Type)}", canvasX, canvasY, hasShips ? Color.Cyan : Color.White));
+                _waypointBinds.Add(waypoint.Symbol, Controls.AddLabel($"{WaypointSymbol(waypoint.Type)}", canvasX, canvasY, hasShips ? Color.Cyan : Color.White));
             }
             else
             {
-                WaypointBinds[waypoint.Symbol].TextColor = hasShips ? Color.Cyan : Color.White;
-                WaypointBinds[waypoint.Symbol].SetData([$"{WaypointSymbol(waypoint.Type)}"]);
+                _waypointBinds[waypoint.Symbol].TextColor = hasShips ? Color.Cyan : Color.White;
+                _waypointBinds[waypoint.Symbol].SetData([$"{WaypointSymbol(waypoint.Type)}"]);
             }
         }
     }
 
-    private void DrawContent()
+    protected override void DrawContent()
     {
-
+        // Content is drawn dynamically in BindData
     }
 
-    private Color StarColor(SystemType systemType)
+    private static Color StarColor(SystemType systemType)
     {
-        switch(systemType)
+        return systemType switch
         {
-            case SystemType.NeutronStar:
-                return Color.Cyan;
-            case SystemType.RedStar:
-                return Color.Red;
-            case SystemType.OrangeStar:
-                return Color.Orange;
-            case SystemType.BlueStar:
-                return Color.Blue;
-            case SystemType.YoungStar:
-                return Color.LightBlue;
-            case SystemType.WhiteDwarf:
-                return Color.White;
-            case SystemType.BlackHole:
-                return Color.DimGray;
-            case SystemType.HyperGiant:
-                return Color.Brown;
-            case SystemType.Nebula:
-                return Color.GreenYellow;
-            case SystemType.Unstable:
-                return Color.Violet;
-            default:
-                return Color.Magenta;
-        }
+            SystemType.NeutronStar => Color.Cyan,
+            SystemType.RedStar => Color.Red,
+            SystemType.OrangeStar => Color.Orange,
+            SystemType.BlueStar => Color.Blue,
+            SystemType.YoungStar => Color.LightBlue,
+            SystemType.WhiteDwarf => Color.White,
+            SystemType.BlackHole => Color.DimGray,
+            SystemType.HyperGiant => Color.Brown,
+            SystemType.Nebula => Color.GreenYellow,
+            SystemType.Unstable => Color.Violet,
+            _ => Color.Magenta,
+        };
     }
 
-    private string StarSymbol(SystemType systemType)
+    private static string StarSymbol(SystemType systemType)
     {
-        switch (systemType)
+        return systemType switch
         {
-            case SystemType.NeutronStar:
-                return " <*> ";
-            case SystemType.RedStar:
-                return " (.) ";
-            case SystemType.OrangeStar:
-                return " ( ) ";
-            case SystemType.BlueStar:
-                return " (*) ";
-            case SystemType.YoungStar:
-                return "  o  ";
-            case SystemType.WhiteDwarf:
-                return "  *  ";
-            case SystemType.BlackHole:
-                return " (*) ";
-            case SystemType.HyperGiant:
-                return "(( ))";
-            case SystemType.Nebula:
-                return " ~~~ ";
-            case SystemType.Unstable:
-                return " {!} ";
-            default:
-                return " (?) ";
-        }
+            SystemType.NeutronStar => " <*> ",
+            SystemType.RedStar => " (.) ",
+            SystemType.OrangeStar => " ( ) ",
+            SystemType.BlueStar => " (*) ",
+            SystemType.YoungStar => "  o  ",
+            SystemType.WhiteDwarf => "  *  ",
+            SystemType.BlackHole => " (*) ",
+            SystemType.HyperGiant => "(( ))",
+            SystemType.Nebula => " ~~~ ",
+            SystemType.Unstable => " {!} ",
+            _ => " (?) ",
+        };
     }
 
-    private string WaypointSymbol(WaypointType type)
+    private static string WaypointSymbol(WaypointType type)
     {
-        switch (type)
+        return type switch
         {
-            case WaypointType.Planet:
-                return $"{(char)9}";
-            case WaypointType.GasGiant:
-                return $"{(char)233}";
-            case WaypointType.Moon:
-                return $"{(char)7}";
-            case WaypointType.OrbitalStation:
-                return "@";
-            case WaypointType.JumpGate:
-                return "*";
-            case WaypointType.AsteroidField:
-                return $"{(char)177}";
-            case WaypointType.Asteroid:
-                return $"{(char)250}";
-            case WaypointType.EngineeredAsteroid:
-                return ";";
-            case WaypointType.AsteroidBase:
-                return "A";
-            case WaypointType.Nebula:
-                return $"{(char)247}";
-            case WaypointType.DebrisField:
-                return "#";
-            case WaypointType.GravityWell:
-                return "v";
-            case WaypointType.ArtificialGravityWell:
-                return "V";
-            case WaypointType.FuelStation:
-                return "&";
-            default:
-                return "?";
-        }
+            WaypointType.Planet => $"{(char)9}",
+            WaypointType.GasGiant => $"{(char)233}",
+            WaypointType.Moon => $"{(char)7}",
+            WaypointType.OrbitalStation => "@",
+            WaypointType.JumpGate => "*",
+            WaypointType.AsteroidField => $"{(char)177}",
+            WaypointType.Asteroid => $"{(char)250}",
+            WaypointType.EngineeredAsteroid => ";",
+            WaypointType.AsteroidBase => "A",
+            WaypointType.Nebula => $"{(char)247}",
+            WaypointType.DebrisField => "#",
+            WaypointType.GravityWell => "v",
+            WaypointType.ArtificialGravityWell => "V",
+            WaypointType.FuelStation => "&",
+            _ => "?",
+        };
     }
 
-    private string ShipSymbol(Core.Enums.Direction direction)
+    private static string ShipSymbol(Core.Enums.Direction direction)
     {
-        switch (direction)
+        return direction switch
         {
-            case Core.Enums.Direction.South:
-                return $"{(char)9}";
-            case Core.Enums.Direction.East:
-                return $"{(char)9}";
-            case Core.Enums.Direction.West:
-                return $"{(char)9}";
-            case Core.Enums.Direction.North:
-                return $"{(char)9}";
-            default:
-                return "?";
-        }
+            Core.Enums.Direction.South => $"{(char)9}",
+            Core.Enums.Direction.East => $"{(char)9}",
+            Core.Enums.Direction.West => $"{(char)9}",
+            Core.Enums.Direction.North => $"{(char)9}",
+            _ => "?",
+        };
     }
-
 }

@@ -1,10 +1,9 @@
-﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -13,96 +12,70 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
+internal sealed class WaypointWindow : DataBoundWindowWithSymbols<Waypoint>
 {
-    private string Symbol { get; set; } = string.Empty;
+    private readonly WaypointService _waypointService;
+    private readonly ShipService _shipService;
 
-    private string ParentSymbol { get; set; } = string.Empty;
-
-    private Waypoint? Waypoint { get; set; }
-
-    private Ship[] Ships { get; set; } = [];
-
-    private Dictionary<string, CustomButton> Buttons { get; set; } = [];
-    private CustomListBox? ShipsListBox { get; set; }
-    private CustomListBox? OrbitalsListBox { get; set; }
-
-    private WaypointService WaypointService { get; init; }
-    private ShipService ShipService { get; init; }
+    private ImmutableArray<Ship> _ships = [];
+    private readonly Dictionary<string, CustomButton> _buttons = [];
+    private CustomListBox? _shipsListBox;
+    private CustomListBox? _orbitalsListBox;
 
     public WaypointWindow(RootScreen rootScreen, WaypointService waypointService, ShipService shipService)
         : base(rootScreen, 45, 30)
     {
-        waypointService.Updated += LoadData;
-        shipService.Updated += LoadData;
-        WaypointService = waypointService;
-        ShipService = shipService;
-        DrawContent();
+        _waypointService = waypointService;
+        _shipService = shipService;
+
+        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Waypoint>>>(
+            handler => waypointService.Updated += handler,
+            handler => waypointService.Updated -= handler,
+            OnServiceUpdated);
+
+        SubscribeToEvent<ImmutableArray<Ship>>(
+            handler => shipService.Updated += handler,
+            handler => shipService.Updated -= handler,
+            OnShipsUpdated);
+
+        Initialize();
     }
 
-    public void SetSymbol(string[] symbols)
+    protected override Waypoint? FetchData()
     {
-        Symbol = symbols[0];
-        ParentSymbol = symbols[1];
-        LoadData(WaypointService.GetWaypoints());
-        LoadData(ShipService.GetShips().ToArray());
+        var waypoints = _waypointService.GetWaypoints().GetValueOrDefault(ParentSymbol);
+        return waypoints.IsDefault ? null : waypoints.FirstOrDefault(d => d.Symbol == Symbol);
     }
 
-    public Task LoadData(ImmutableDictionary<string, ImmutableList<Waypoint>> data)
+    protected override void BindData(Waypoint data)
     {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var waypoints = data.GetValueOrDefault(ParentSymbol);
-        var waypoint = waypoints?.FirstOrDefault(d => d.Symbol == Symbol);
-        if (Waypoint is not null && Waypoint == waypoint)
-            return Task.CompletedTask;
-
         Title = $"Waypoint {Symbol} in {ParentSymbol}";
-        Waypoint = waypoint;
 
+        // Update ships for this waypoint
+        _ships = [.. _shipService.GetShips().Where(d => d.Navigation.WaypointSymbol == data.Symbol)];
 
+        Binds["Symbol"].SetData([$"{data.Symbol}"]);
+        Binds["Type"].SetData([$"{data.Type}"]);
+        Binds["Location"].SetData([$"{data.X}, {data.Y}"]);
+        _buttons["Shipyard"].IsEnabled = data.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Shipyard);
+        _buttons["Marketplace"].IsEnabled = data.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Marketplace);
+        _buttons["Construction"].IsEnabled = false;
+        _shipsListBox?.SetData([.. _ships.OrderBy(s => s.Symbol).Select(s => $"{s.Symbol} ({s.Registration.Role})")]);
+        _orbitalsListBox?.SetData([.. data.Orbitals.OrderBy(w => w)]);
+        _buttons["Orbits"].SetData([$"{(!string.IsNullOrEmpty(data.Orbits) ? data.Orbits : "Orbits the sun")}"]);
+        _buttons["Orbits"].IsEnabled = !string.IsNullOrEmpty(data.Orbits);
+        Binds["Traits"].SetData([.. data.Traits.Where(t => !IsSpecialTrait(t.Symbol)).OrderBy(w => w.Name).Select(t => t.Name)]);
+        Binds["Modifiers"].SetData([.. data.Modifiers.Select(m => m.Name)]);
+    }
 
-
-        RebindAndResize();
+    private Task OnShipsUpdated(ImmutableArray<Ship> _)
+    {
+        // Ships changed, refresh to update the ships list
+        RefreshData();
         return Task.CompletedTask;
     }
 
-    public Task LoadData(Ship[] data)
-    {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var relevantData = data.Where(d => d.Navigation.WaypointSymbol == Waypoint?.Symbol).ToArray();
-        if (Ships.All(s => s == relevantData.FirstOrDefault(d => d.Symbol == s.Symbol)) && relevantData.All(s => s == Ships.FirstOrDefault(d => d.Symbol == s.Symbol)))
-            return Task.CompletedTask;
-        Ships = relevantData;
-
-
-
-
-        RebindAndResize();
-        return Task.CompletedTask;
-    }
-
-    private void RebindAndResize()
-    {
-        if (Waypoint is null)
-            return;
-        Binds["Symbol"].SetData([$"{Waypoint.Symbol}"]);
-        Binds["Type"].SetData([$"{Waypoint.Type}"]);
-        Binds["Location"].SetData([$"{Waypoint.X}, {Waypoint.Y}"]);
-        Buttons["Shipyard"].IsEnabled = Waypoint.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Shipyard);
-        Buttons["Marketplace"].IsEnabled = Waypoint.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Marketplace);
-        Buttons["Construction"].IsEnabled = false;
-        ShipsListBox.SetData([.. Ships.OrderBy(s => s.Symbol).Select(s => $"{s.Symbol} ({s.Registration.Role})")]);
-        OrbitalsListBox.SetData([.. Waypoint.Orbitals.OrderBy(w => w)]);
-        Buttons["Orbits"].SetData([$"{(!string.IsNullOrEmpty(Waypoint.Orbits) ? Waypoint.Orbits : "Orbits the sun")}"]);
-        Buttons["Orbits"].IsEnabled = !string.IsNullOrEmpty(Waypoint.Orbits);
-        Binds["Traits"].SetData([.. Waypoint.Traits.Where(t => !IsSpecialTrait(t.Symbol)).OrderBy(w => w.Name).Select(t => t.Name)]);
-        Binds["Modifiers"].SetData([.. Waypoint.Modifiers.Select(m => m.Name)]);
-        ResizeAndRedraw();
-    }
-
-    private void DrawContent()
+    protected override void DrawContent()
     {
         var y = 2;
         Controls.AddLabel($"Symbol:", 2, y);
@@ -111,34 +84,33 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
         Binds.Add("Type", Controls.AddLabel($"Waypoint.Type", 21, y++));
         Controls.AddLabel($"Location:", 2, y);
         Binds.Add("Location", Controls.AddLabel($"Waypoint.Location", 21, y++));
-        Buttons.Add("Shipyard", Controls.AddButton($"Shipyard", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardWindow>([Symbol, ParentSymbol])));
-        Buttons.Add("Marketplace", Controls.AddButton($"Marketplace", 2, y++, (_, _) => RootScreen.ShowWindow<MarketWindow>([Symbol, ParentSymbol])));
-        Buttons.Add("Construction", Controls.AddButton($"Is Under Construction", 2, y++, (_, _) => throw new NotSupportedException()));
+        _buttons.Add("Shipyard", Controls.AddButton($"Shipyard", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardWindow>([Symbol, ParentSymbol])));
+        _buttons.Add("Marketplace", Controls.AddButton($"Marketplace", 2, y++, (_, _) => RootScreen.ShowWindow<MarketWindow>([Symbol, ParentSymbol])));
+        _buttons.Add("Construction", Controls.AddButton($"Is Under Construction", 2, y++, (_, _) => throw new NotSupportedException()));
         y++;
         Controls.AddLabel($"Ships at this Waypoint:", 2, y++);
-        ShipsListBox = Controls.AddListbox($"Ships", 2, y, 80, 5);
-        Binds.Add("Ships", ShipsListBox);
+        _shipsListBox = Controls.AddListbox($"Ships", 2, y, 80, 5);
+        Binds.Add("Ships", _shipsListBox);
         y += 5;
         Controls.AddButton("Show Ship", 2, y++, (_, _) => OpenShip());
         y++;
         Controls.AddLabel($"Orbitals:", 2, y++);
-        OrbitalsListBox = Controls.AddListbox($"Orbital", 2, y, 80, 7);
-        Binds.Add("Orbitals", OrbitalsListBox);
+        _orbitalsListBox = Controls.AddListbox($"Orbital", 2, y, 80, 7);
+        Binds.Add("Orbitals", _orbitalsListBox);
         y += 7;
         Controls.AddButton("Show Orbital", 2, y++, (_, _) => OpenOrbital());
         y++;
         Controls.AddLabel($"Orbits:", 2, y);
-        Buttons.Add("Orbits", Controls.AddButton($"Waypoint.Orbits", 11, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>([Waypoint.Orbits, Waypoint.SystemSymbol])));
+        _buttons.Add("Orbits", Controls.AddButton($"Waypoint.Orbits", 11, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>([CurrentData!.Orbits, CurrentData.SystemSymbol])));
         y++;
         Controls.AddLabel($"Traits:", 2, y++);
         Binds.Add("Traits", Controls.AddListbox($"Traits", 2, y, 80, 7));
         y += 7;
         Controls.AddLabel($"Modifiers:", 2, y++);
         Binds.Add("Modifiers", Controls.AddListbox($"Modifiers", 2, y, 80, 7));
-        y += 7;
     }
 
-    private bool IsSpecialTrait(WaypointTraitSymbol trait)
+    private static bool IsSpecialTrait(WaypointTraitSymbol trait)
     {
         return trait is WaypointTraitSymbol.Marketplace or
                WaypointTraitSymbol.Shipyard;
@@ -146,25 +118,25 @@ internal sealed class WaypointWindow : ClosableWindow, ICanSetSymbols
 
     private void OpenShip()
     {
-        if (ShipsListBox is null)
+        if (_shipsListBox is null)
             return;
-        var listbox = ShipsListBox;
-        if (listbox.SelectedIndex is int index and >= 0 && index < Ships.Length)
+        var listbox = _shipsListBox;
+        if (listbox.SelectedIndex is int index and >= 0 && index < _ships.Length)
         {
-            var ship = Ships[index];
+            var ship = _ships[index];
             RootScreen.ShowWindow<ShipWindow>([ship.Symbol]);
         }
     }
 
     private void OpenOrbital()
     {
-        if (OrbitalsListBox is null)
+        if (_orbitalsListBox is null || CurrentData is null)
             return;
-        var listbox = OrbitalsListBox;
-        if (listbox.SelectedIndex is int index and >= 0 && index < Waypoint.Orbitals.Count)
+        var listbox = _orbitalsListBox;
+        if (listbox.SelectedIndex is int index and >= 0 && index < CurrentData.Orbitals.Length)
         {
-            var orbital = Waypoint.Orbitals[index];
-            RootScreen.ShowWindow<WaypointWindow>([orbital, Waypoint.SystemSymbol]);
+            var orbital = CurrentData.Orbitals[index];
+            RootScreen.ShowWindow<WaypointWindow>([orbital, CurrentData.SystemSymbol]);
         }
     }
 }

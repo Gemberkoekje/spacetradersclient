@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+namespace SpaceTraders.UI.Interfaces;
 
-namespace SpaceTraders.UI.Interfaces
+internal interface ICanSetSymbols
 {
-    internal interface ICanSetSymbols
-    {
-        public void SetSymbol(string[] symbols);
-    }
+    public void SetSymbol(string[] symbols);
 }

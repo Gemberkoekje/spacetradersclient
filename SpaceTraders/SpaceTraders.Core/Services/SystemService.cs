@@ -1,42 +1,64 @@
-﻿using Qowaiv;
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
-using SpaceTraders.Core.Helpers;
 using SpaceTraders.Core.Models.SystemModels;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.Core.Services;
 
-public class SystemService(Client.SpaceTradersService service, WaypointService waypointService)
+/// <summary>
+/// Service for managing system data.
+/// </summary>
+/// <param name="service">The SpaceTraders API service.</param>
+/// <param name="waypointService">The waypoint service.</param>
+#pragma warning disable CS9113 // Parameter is unread - waypointService reserved for future use
+public sealed class SystemService(Client.SpaceTradersService service, WaypointService waypointService)
+#pragma warning restore CS9113
 {
-    private ImmutableList<SystemWaypoint> Systems { get; set; } = [];
+    private ImmutableArray<SystemWaypoint> Systems { get; set; } = [];
 
-    public event Action<SystemWaypoint[]>? Updated;
+    /// <summary>
+    /// Event raised when systems are updated.
+    /// </summary>
+    public event Action<ImmutableArray<SystemWaypoint>>? Updated;
 
-    public async Task Initialize()
+    /// <summary>
+    /// Initializes the system service.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public static Task Initialize()
     {
+        // Not yet implemented
+        return Task.CompletedTask;
     }
 
-    private void Update(IEnumerable<SystemWaypoint> ships)
-    {
-        Systems = ships.ToImmutableList();
-        Updated?.Invoke(ships.ToArray());
-    }
-
+    /// <summary>
+    /// Adds a system by symbol.
+    /// </summary>
+    /// <param name="symbol">The system symbol.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task AddSystem(string symbol)
     {
         var systems = await service.EnqueueAsync((client, ct) => client.GetSystemAsync(symbol, ct));
         Update(Systems.Add(MapSystemWaypoint(systems.Value.Data)));
     }
 
-    public ImmutableList<SystemWaypoint> GetSystems()
+    /// <summary>
+    /// Gets all systems.
+    /// </summary>
+    /// <returns>The systems.</returns>
+    public ImmutableArray<SystemWaypoint> GetSystems()
     {
         return Systems;
+    }
+
+    private void Update(IEnumerable<SystemWaypoint> ships)
+    {
+        Systems = [.. ships];
+        Updated?.Invoke(Systems);
     }
 
     private static SystemWaypoint MapSystemWaypoint(Client.StarSystem s)

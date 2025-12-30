@@ -1,68 +1,59 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
+using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ModulesWindow : ClosableWindow, ICanSetSymbols
+internal sealed class ModulesWindow : DataBoundWindowWithSymbols<ImmutableArray<Module>>
 {
-    private string Symbol { get; set; } = string.Empty;
-
-    private ImmutableList<Module> Modules { get; set; }
-
-    private CustomListBox ModulesListBox { get; set; }
-
-    private ShipService ShipService { get; init; }
+    private readonly ShipService _shipService;
+    private CustomListBox<ModuleListValue>? _modulesListBox;
 
     public ModulesWindow(RootScreen rootScreen, ShipService shipService)
         : base(rootScreen, 52, 20)
     {
-        shipService.Updated += LoadData;
-        ShipService = shipService;
-        DrawContent();
+        _shipService = shipService;
+
+        SubscribeToEvent<ImmutableArray<Ship>>(
+            handler => shipService.Updated += handler,
+            handler => shipService.Updated -= handler,
+            OnServiceUpdated);
+
+        Initialize();
     }
 
-    public Task LoadData(Ship[] data)
+    protected override ImmutableArray<Module> FetchData() =>
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol)?.Modules ?? [];
+
+    protected override void BindData(ImmutableArray<Module> data)
     {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var modules = data.First(s => s.Symbol == Symbol).Modules;
-        if (Modules is not null && Modules == modules)
-            return Task.CompletedTask;
         Title = $"Modules for ship {Symbol}";
-        Modules = modules;
-        Binds["Modules"].SetData([.. Modules.Select(module => $"{module.Name} (Capacity: {module.Capacity}, Range: {module.Range})")]);
-        ResizeAndRedraw();
-        return Task.CompletedTask;
+        _modulesListBox?.SetCustomData([.. data.Select(module => new ModuleListValue(module))]);
     }
 
-    public void SetSymbol(string[] symbols)
-    {
-        Symbol = symbols[0];
-        LoadData(ShipService.GetShips().ToArray());
-    }
-
-    private void DrawContent()
+    protected override void DrawContent()
     {
         var y = 2;
-        ModulesListBox = Controls.AddListbox($"Modules", 2, y, 80, 10);
-        Binds.Add("Modules", ModulesListBox);
+        _modulesListBox = Controls.AddListbox<ModuleListValue>($"Modules", 2, y, 80, 10);
+        Binds.Add("Modules", _modulesListBox);
         y += 10;
-        Controls.AddButton("Show Module", 2, y++, (_, _) => OpenModule());
+        Controls.AddButton("Show Module", 2, y, (_, _) => OpenModule());
     }
 
     private void OpenModule()
     {
-        var listbox = ModulesListBox;
-        if (listbox.SelectedIndex is int index and >= 0 && index < Modules.Count)
+        if (_modulesListBox?.GetSelectedItem() is ModuleListValue moduleListValue)
         {
-            var module = Modules[index];
-            RootScreen.ShowWindow<ModuleWindow>([module.Symbol.ToString()]);
+            RootScreen.ShowWindow<ModuleWindow>([moduleListValue.Module.Symbol.ToString()]);
         }
+    }
+
+    private sealed record ModuleListValue(Module Module)
+    {
+        public override string ToString() => $"{Module.Name} (Capacity: {Module.Capacity}, Range: {Module.Range})";
     }
 }

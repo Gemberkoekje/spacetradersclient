@@ -1,48 +1,53 @@
-﻿using SpaceTraders.Core.Models.ContractModels;
+using SpaceTraders.Core.Models.ContractModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ContractWindow : ClosableWindow
+internal sealed class ContractWindow : DataBoundWindowNoSymbols<Contract>
 {
-    private Contract? Contract { get; set; }
+    private readonly ContractService _contractService;
 
     public ContractWindow(RootScreen rootScreen, ContractService contractService)
         : base(rootScreen, 45, 30)
     {
-        contractService.Updated += LoadData;
-        DrawContent();
-        LoadData(contractService.GetContracts().ToArray());
+        _contractService = contractService;
+
+        SubscribeToEvent<ImmutableArray<Contract>>(
+            handler => contractService.Updated += handler,
+            handler => contractService.Updated -= handler,
+            OnServiceUpdatedSync);
+
+        Initialize(refreshImmediately: true);
     }
 
-    public void LoadData(Contract[] data)
+    protected override Contract? FetchData() =>
+        _contractService.GetContracts().FirstOrDefault();
+
+    protected override bool DataEquals(Contract? current, Contract? previous)
     {
-        if (Surface == null)
-            return;
-        var contract = data.Length > 0 ? data[0] : null;
-        if (contract is null)
-            return;
-        if (Contract is not null && Contract.ContractsEqualByValue(Contract, contract))
-            return;
-
-        Title = $"Contract";
-        Contract = contract;
-
-        Binds["Faction"].SetData([$"{Contract.FactionSymbol}"]);
-        Binds["Type"].SetData([$"{Contract.Type}"]);
-        Binds["Terms.Deadline"].SetData([$"{Contract.Terms.Deadline}"]);
-        Binds["Terms.Payment.OnAccepted"].SetData([$"{Contract.Terms.Payment.OnAccepted:#,###}"]);
-        Binds["Terms.Payment.OnFulfilled"].SetData([$"{Contract.Terms.Payment.OnFulfilled:#,###}"]);
-        Binds["DeliverList"].SetData(Contract.Terms.Deliver.Select(d => $"- Deliver {d.UnitsRequired} of {d.TradeSymbol} to {d.DestinationSymbol} (Fulfilled: {d.UnitsFulfilled})").ToArray());
-        Binds["DeadlineToAccept"].SetData([$"{Contract.DeadlineToAccept}"]);
-        Binds["Accepted"].SetData([$"{Contract.Accepted}"]);
-        Binds["Fulfilled"].SetData([$"{Contract.Fulfilled}"]);
-        ResizeAndRedraw();
+        if (current is null && previous is null) return true;
+        if (current is null || previous is null) return false;
+        return Contract.ContractsEqualByValue(current, previous);
     }
 
-    private void DrawContent()
+    protected override void BindData(Contract data)
+    {
+        Title = $"Contract";
+        Binds["Faction"].SetData([$"{data.FactionSymbol}"]);
+        Binds["Type"].SetData([$"{data.Type}"]);
+        Binds["Terms.Deadline"].SetData([$"{data.Terms.Deadline}"]);
+        Binds["Terms.Payment.OnAccepted"].SetData([$"{data.Terms.Payment.OnAccepted:#,###}"]);
+        Binds["Terms.Payment.OnFulfilled"].SetData([$"{data.Terms.Payment.OnFulfilled:#,###}"]);
+        Binds["DeliverList"].SetData(data.Terms.Deliver.Select(d => $"- Deliver {d.UnitsRequired} of {d.TradeSymbol} to {d.DestinationSymbol} (Fulfilled: {d.UnitsFulfilled})").ToArray());
+        Binds["DeadlineToAccept"].SetData([$"{data.DeadlineToAccept}"]);
+        Binds["Accepted"].SetData([$"{data.Accepted}"]);
+        Binds["Fulfilled"].SetData([$"{data.Fulfilled}"]);
+    }
+
+    protected override void DrawContent()
     {
         var y = 2;
         Controls.AddLabel($"Faction:", "FactionLabel", 2, y);

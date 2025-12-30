@@ -1,47 +1,45 @@
-﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System;
 using System.Collections.Immutable;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class FrameWindow : ClosableWindow, ICanSetSymbols
+internal sealed class FrameWindow : DataBoundWindowWithSymbols<Frame>
 {
-    private Frame? Frame { get; set; }
-
-    private ModuleService ModuleService { get; init; }
+    private readonly ModuleService _moduleService;
 
     public FrameWindow(RootScreen rootScreen, ModuleService moduleService)
         : base(rootScreen, 52, 20)
     {
-        ModuleService = moduleService;
-        DrawContent();
+        _moduleService = moduleService;
+
+        Initialize();
     }
 
-    public void SetSymbol(string[] symbols)
+    protected override Frame? FetchData()
     {
-        var frame = ModuleService.GetFrames().GetValueOrDefault(Enum.Parse<FrameSymbol>(symbols[0]));
-        if (frame != null)
-        {
-            Title = $"{frame.Name}";
-            Frame = frame;
-            Binds["Name"].SetData([$"{Frame.Name}"]);
-            Binds["Condition"].SetData([$"{Frame.Condition}"]);
-            Binds["Integrity"].SetData([$"{Frame.Integrity}"]);
-            Binds["ModuleSlots"].SetData([$"{Frame.ModuleSlots}"]);
-            Binds["MountingPoints"].SetData([$"{Frame.MountingPoints}"]);
-            Binds["FuelCapacity"].SetData([$"{Frame.FuelCapacity}"]);
-            Binds["Requirements.Power"].SetData([$"{Frame.Requirements.Power}"]);
-            Binds["Requirements.Crew"].SetData([$"{Frame.Requirements.Crew}"]);
-            Binds["Requirements.Slots"].SetData([$"{Frame.Requirements.Slots}"]);
-            ResizeAndRedraw();
-        }
+        if (string.IsNullOrEmpty(Symbol)) return null;
+        return _moduleService.GetFrames().GetValueOrDefault(Enum.Parse<FrameSymbol>(Symbol));
     }
 
-    private void DrawContent()
+    protected override void BindData(Frame data)
+    {
+        Title = $"{data.Name}";
+        Binds["Name"].SetData([$"{data.Name}"]);
+        Binds["Condition"].SetData([$"{data.Condition}"]);
+        Binds["Integrity"].SetData([$"{data.Integrity}"]);
+        Binds["ModuleSlots"].SetData([$"{data.ModuleSlots}"]);
+        Binds["MountingPoints"].SetData([$"{data.MountingPoints}"]);
+        Binds["FuelCapacity"].SetData([$"{data.FuelCapacity}"]);
+        Binds["Requirements.Power"].SetData([$"{data.Requirements.Power}"]);
+        Binds["Requirements.Crew"].SetData([$"{data.Requirements.Crew}"]);
+        Binds["Requirements.Slots"].SetData([$"{data.Requirements.Slots}"]);
+    }
+
+    protected override void DrawContent()
     {
         var y = 2;
         Controls.AddLabel($"Name:", 2, y);
@@ -61,6 +59,6 @@ internal sealed class FrameWindow : ClosableWindow, ICanSetSymbols
         Controls.AddLabel($"Crew Requirements:", 2, y);
         Binds.Add("Requirements.Crew", Controls.AddLabel($"Frame.Requirements.Crew", 25, y++));
         Controls.AddLabel($"Slots Requirements:", 2, y);
-        Binds.Add("Requirements.Slots", Controls.AddLabel($"Frame.Requirements.Slots", 25, y++));
+        Binds.Add("Requirements.Slots", Controls.AddLabel($"Frame.Requirements.Slots", 25, y));
     }
 }

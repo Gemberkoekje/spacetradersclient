@@ -1,84 +1,71 @@
-﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipyardModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ShipyardWindow : ClosableWindow, ICanSetSymbols
+internal sealed class ShipyardWindow : DataBoundWindowWithSymbols<Shipyard>
 {
-    private string SystemSymbol { get; set; } = string.Empty;
-    private string WaypointSymbol { get; set; } = string.Empty;
-
-    private Shipyard? Shipyard { get; set; }
-
-    private ShipyardService ShipyardService { get; init; }
-
-    private CustomListBox<ShipyardShipListValue> ShipyardShipListBox { get; set; }
+    private readonly ShipyardService _shipyardService;
+    private CustomListBox<ShipyardShipListValue>? _shipyardShipListBox;
 
     public ShipyardWindow(RootScreen rootScreen, ShipyardService shipyardService)
         : base(rootScreen, 52, 20)
     {
-        ShipyardService = shipyardService;
-        shipyardService.Updated += LoadData;
-        DrawContent();
+        _shipyardService = shipyardService;
+
+        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Shipyard>>>(
+            handler => shipyardService.Updated += handler,
+            handler => shipyardService.Updated -= handler,
+            OnServiceUpdatedSync);
+
+        Initialize();
     }
 
-    public void SetSymbol(string[] symbols)
+    protected override Shipyard? FetchData()
     {
-        WaypointSymbol = symbols[0];
-        SystemSymbol = symbols[1];
-        LoadData(ShipyardService.GetShipyards());
+        var shipyards = _shipyardService.GetShipyards().GetValueOrDefault(ParentSymbol);
+        return shipyards.IsDefault ? null : shipyards.FirstOrDefault(s => s.Symbol == Symbol);
     }
 
-    public void LoadData(ImmutableDictionary<string, ImmutableList<Shipyard>> data)
+    protected override void BindData(Shipyard data)
     {
-        if (Surface == null)
-            return;
-        var shipyard = data.GetValueOrDefault(SystemSymbol)?.FirstOrDefault(s => s.Symbol == WaypointSymbol);
-        if (shipyard is null)
-            return;
-        Title = $"Shipyard {WaypointSymbol} in {SystemSymbol}";
-        Shipyard = shipyard;
-        Binds["Symbol"].SetData([$"{Shipyard.Symbol}"]);
-        ShipyardShipListBox.SetCustomData([.. Shipyard.Ships.Select(s => new ShipyardShipListValue(s.Type, s.Name, s.PurchasePrice))]);
-        Binds["ModificationsFee"].SetData([$"{Shipyard.ModificationsFee}"]);
-        Binds["Transactions"].SetData([$"Transactions ({Shipyard.Transactions.Count})"]);
-
-        ResizeAndRedraw();
+        Title = $"Shipyard {Symbol} in {ParentSymbol}";
+        Binds["Symbol"].SetData([$"{data.Symbol}"]);
+        _shipyardShipListBox?.SetCustomData([.. data.Ships.Select(s => new ShipyardShipListValue(s.Type, s.Name, s.PurchasePrice))]);
+        Binds["ModificationsFee"].SetData([$"{data.ModificationsFee}"]);
+        Binds["Transactions"].SetData([$"Transactions ({data.Transactions.Count})"]);
     }
 
-    private void DrawContent()
+    protected override void DrawContent()
     {
         var y = 2;
         Controls.AddLabel($"Symbol:", 2, y);
         Binds.Add("Symbol", Controls.AddLabel($"Shipyard.Symbol", 21, y++));
 
-        ShipyardShipListBox = Controls.AddListbox<ShipyardShipListValue>($"ShipyardShips", 2, y, 80, 10);
-        Binds.Add("ShipyardShips", ShipyardShipListBox);
+        _shipyardShipListBox = Controls.AddListbox<ShipyardShipListValue>($"ShipyardShips", 2, y, 80, 10);
+        Binds.Add("ShipyardShips", _shipyardShipListBox);
         y += 10;
         Controls.AddButton("Show Ship", 2, y++, (_, _) => OpenShip());
 
         Controls.AddLabel($"Modifications fee:", 2, y);
         Binds.Add("ModificationsFee", Controls.AddLabel($"Shipyard.ModificationsFee", 21, y++));
-        Binds.Add("Transactions", Controls.AddButton($"Shipyard.Transactions", 2, y++, (_, _) => RootScreen.ShowWindow<TransactionsWindow>([WaypointSymbol, SystemSymbol])));
+        Binds.Add("Transactions", Controls.AddButton($"Shipyard.Transactions", 2, y, (_, _) => RootScreen.ShowWindow<TransactionsWindow>([Symbol, ParentSymbol])));
     }
 
     private void OpenShip()
     {
-        var listbox = ShipyardShipListBox;
-        if (listbox.GetSelectedItem() is ShipyardShipListValue shipyardShip)
+        if (_shipyardShipListBox?.GetSelectedItem() is ShipyardShipListValue shipyardShip)
         {
-            RootScreen.ShowWindow<ShipyardShipWindow>([shipyardShip.Type.ToString(), WaypointSymbol, SystemSymbol]);
+            RootScreen.ShowWindow<ShipyardShipWindow>([shipyardShip.Type.ToString(), Symbol, ParentSymbol]);
         }
     }
 
-    private record ShipyardShipListValue(ShipType Type, string Name, int PurchasePrice)
+    private sealed record ShipyardShipListValue(ShipType Type, string Name, int PurchasePrice)
     {
         public override string ToString() => $"{Type} {Name} ({PurchasePrice:#,###})";
     }

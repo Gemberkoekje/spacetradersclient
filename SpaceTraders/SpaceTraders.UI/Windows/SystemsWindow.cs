@@ -1,66 +1,72 @@
-﻿using SadConsole;
+using SadConsole;
 using SadRogue.Primitives;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class SystemsWindow : ClosableWindow
+internal sealed class SystemsWindow : DataBoundWindowNoSymbols<ImmutableArray<SystemWaypoint>>
 {
-    private SystemWaypoint[] Systems { get; set; }
+    private readonly ShipService _shipService;
+    private readonly SystemService _systemService;
 
-    private Ship[] Ships { get; set; } = [];
-
-    private CustomListBox<SystemListValue>? SystemsListBox { get; set; }
+    private ImmutableArray<Ship> _ships = [];
+    private CustomListBox<SystemListValue>? _systemsListBox;
 
     public SystemsWindow(RootScreen rootScreen, ShipService shipService, SystemService systemService)
         : base(rootScreen, 45, 30)
     {
-        shipService.Updated += LoadData;
-        systemService.Updated += LoadData;
+        _shipService = shipService;
+        _systemService = systemService;
         Title = "Known Systems";
-        DrawContent();
-        LoadData(systemService.GetSystems().ToArray());
-        LoadData(shipService.GetShips().ToArray());
+
+        SubscribeToEvent<ImmutableArray<SystemWaypoint>>(
+            handler => systemService.Updated += handler,
+            handler => systemService.Updated -= handler,
+            OnServiceUpdatedSync);
+
+        SubscribeToEvent<ImmutableArray<Ship>>(
+            handler => shipService.Updated += handler,
+            handler => shipService.Updated -= handler,
+            OnShipsUpdated);
+
+        Initialize(refreshImmediately: true);
     }
 
-    public void LoadData(SystemWaypoint[] data)
+    protected override ImmutableArray<SystemWaypoint> FetchData() =>
+        _systemService.GetSystems();
+
+    protected override void BindData(ImmutableArray<SystemWaypoint> data)
     {
-        if (Surface == null)
-            return;
-        Systems = data;
-        SystemsListBox.SetCustomData([.. Systems.Select(s => new SystemListValue(s, Ships.Count(sh => sh.Navigation.SystemSymbol == s.Symbol)))]);
-        ResizeAndRedraw();
+        _ships = _shipService.GetShips();
+        _systemsListBox?.SetCustomData([.. data.Select(s => new SystemListValue(s, _ships.Count(sh => sh.Navigation.SystemSymbol == s.Symbol)))]);
     }
 
-    public Task LoadData(Ship[] data)
+    private Task OnShipsUpdated(ImmutableArray<Ship> ships)
     {
-        if (Surface == null)
-            return Task.CompletedTask;
-        Ships = data;
-        SystemsListBox.SetCustomData([.. Systems.Select(s => new SystemListValue(s, Ships.Count(sh => sh.Navigation.SystemSymbol == s.Symbol)))]);
-        ResizeAndRedraw();
+        _ships = ships;
+        RefreshData();
         return Task.CompletedTask;
     }
 
-    private void DrawContent()
+    protected override void DrawContent()
     {
         var y = 2;
-        SystemsListBox = Controls.AddListbox<SystemListValue>($"Systems", 2, y, 80, 10);
-        Binds.Add("Systems", SystemsListBox);
+        _systemsListBox = Controls.AddListbox<SystemListValue>($"Systems", 2, y, 80, 10);
+        Binds.Add("Systems", _systemsListBox);
         y += 10;
-        Controls.AddButton("Show System", 2, y++, (_, _) => OpenSystem());
+        Controls.AddButton("Show System", 2, y, (_, _) => OpenSystem());
     }
 
     private void OpenSystem()
     {
-        var listbox = SystemsListBox;
-        if (listbox.GetSelectedItem() is SystemListValue waypoint)
+        if (_systemsListBox?.GetSelectedItem() is SystemListValue waypoint)
         {
             RootScreen.ShowWindow<SystemDataWindow>([waypoint.System.Symbol]);
         }
@@ -69,8 +75,6 @@ internal sealed class SystemsWindow : ClosableWindow
     private sealed class SystemListValue(SystemWaypoint system, int shipCount) : ColoredString(GetDisplayText(system, shipCount), GetForegroundColor(shipCount), Color.Transparent)
     {
         public SystemWaypoint System => system;
-
-        public int ShipCount => shipCount;
 
         private static string GetDisplayText(SystemWaypoint system, int shipCount)
         {

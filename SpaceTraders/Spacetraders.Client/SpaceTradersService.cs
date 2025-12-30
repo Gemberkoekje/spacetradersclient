@@ -1,6 +1,5 @@
-﻿using Qowaiv.Validation.Abstractions;
+using Qowaiv.Validation.Abstractions;
 using System;
-using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -10,6 +9,9 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.Client;
 
+/// <summary>
+/// Provides a rate-limited service for executing SpaceTraders API operations.
+/// </summary>
 public sealed class SpaceTradersService(
     SpaceTradersClient client,
     int permitsPerSecond = 2,
@@ -21,6 +23,7 @@ public sealed class SpaceTradersService(
     private interface IWorkItem
     {
         ValueTask ExecuteAsync(SpaceTradersClient client, CancellationToken ct);
+
         void TryCancel(CancellationToken ct);
     }
 
@@ -55,7 +58,10 @@ public sealed class SpaceTradersService(
                             }
                         }
                     }
-                    catch { /* ignore header parsing issues */ }
+                    catch
+                    {
+                        // ignore header parsing issues
+                    }
 
                     try
                     {
@@ -82,34 +88,13 @@ public sealed class SpaceTradersService(
 
                 var response = ex.Response;
                 var error = JsonSerializer.Deserialize<ErrorResponse>(response);
-                if(error is null || error.error is null)
+                if (error is null || error.error is null)
                 {
                     tcs.TrySetException(new InvalidOperationException("Failed to deserialize error response.", ex));
                     return;
                 }
+
                 tcs.TrySetResult(Result.WithMessages<T>(ValidationMessage.Error(error.error.message)));
-            }
-            catch (Exception ex)
-            {
-                tcs.TrySetException(ex);
-            }
-        }
-
-        public void TryCancel(CancellationToken ct) => tcs.TrySetCanceled(ct);
-    }
-
-    private sealed class WorkItem(Func<SpaceTradersClient, CancellationToken, Task> op, TaskCompletionSource tcs) : IWorkItem
-    {
-        public async ValueTask ExecuteAsync(SpaceTradersClient client, CancellationToken ct)
-        {
-            try
-            {
-                await op(client, ct).ConfigureAwait(false);
-                tcs.TrySetResult();
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                tcs.TrySetCanceled(ct);
             }
             catch (Exception ex)
             {
@@ -126,26 +111,38 @@ public sealed class SpaceTradersService(
     private readonly Channel<IWorkItem> _queue = Channel.CreateBounded<IWorkItem>(
         new BoundedChannelOptions(capacity) { SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait });
 
-    private readonly CancellationTokenSource _cts = new();
+    private readonly CancellationTokenSource _cts = new ();
     private readonly RateLimiter _limiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
     {
         TokenLimit = Math.Max(1, burst),
         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-        QueueLimit = 0, // we do our own queuing via Channels
+        QueueLimit = 0,
         ReplenishmentPeriod = TimeSpan.FromSeconds(Math.Max(1, burstDurationSeconds)),
         TokensPerPeriod = Math.Max(1, permitsPerSecond * Math.Max(1, burstDurationSeconds)),
-        AutoReplenishment = true
+        AutoReplenishment = true,
     });
 
     private int _started;
     private Task? _processingLoop;
 
+    /// <summary>
+    /// Enqueues an operation to be executed against the SpaceTraders API.
+    /// </summary>
+    /// <typeparam name="T">The type of the result.</typeparam>
+    /// <param name="operation">The operation to execute.</param>
+    /// <param name="priority">Whether this is a priority operation.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the result of the operation.</returns>
     public Task<Result<T>> EnqueueAsync<T>(
         Func<SpaceTradersClient, CancellationToken, Task<T>> operation,
         bool priority = false,
         CancellationToken cancellationToken = default)
     {
-        if (operation is null) throw new ArgumentNullException(nameof(operation));
+        if (operation is null)
+        {
+            throw new ArgumentNullException(nameof(operation));
+        }
+
         EnsureStarted();
 
         var tcs = new TaskCompletionSource<Result<T>>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -187,11 +184,16 @@ public sealed class SpaceTradersService(
                     var highWait = high.WaitToReadAsync(ct).AsTask();
                     var lowWait = low.WaitToReadAsync(ct).AsTask();
                     var winner = await Task.WhenAny(highWait, lowWait).ConfigureAwait(false);
-                    if (!await winner.ConfigureAwait(false)) break;
+                    if (!await winner.ConfigureAwait(false))
+                    {
+                        break;
+                    }
 
                     // Try again to read
                     if (!high.TryRead(out work) && !low.TryRead(out work))
+                    {
                         continue;
+                    }
                 }
 
                 // Acquire a token before executing the dequeued work. If none available, wait according to RetryAfter.
@@ -212,7 +214,6 @@ public sealed class SpaceTradersService(
                     {
                         await Task.Delay(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false);
                     }
-                    // loop and try acquire again
                 }
 
                 await work.ExecuteAsync(client, ct).ConfigureAwait(false);
@@ -225,23 +226,38 @@ public sealed class SpaceTradersService(
         finally
         {
             // Cancel anything still queued
-            while (high.TryRead(out var w)) w.TryCancel(ct);
-            while (low.TryRead(out var w)) w.TryCancel(ct);
+            while (high.TryRead(out var w))
+            {
+                w.TryCancel(ct);
+            }
+
+            while (low.TryRead(out var w))
+            {
+                w.TryCancel(ct);
+            }
         }
     }
 
+    /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        _cts.Cancel();
+        await _cts.CancelAsync().ConfigureAwait(false);
         _priorityQueue.Writer.TryComplete();
         _queue.Writer.TryComplete();
 
         if (_processingLoop is not null)
         {
-            try { await _processingLoop.ConfigureAwait(false); } catch { /* ignore */ }
+            try
+            {
+                await _processingLoop.ConfigureAwait(false);
+            }
+            catch
+            {
+                // ignore
+            }
         }
 
-        _limiter.Dispose();
+        await _limiter.DisposeAsync().ConfigureAwait(false);
         _cts.Dispose();
     }
 }

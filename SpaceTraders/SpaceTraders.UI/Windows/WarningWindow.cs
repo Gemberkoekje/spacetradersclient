@@ -1,4 +1,4 @@
-﻿using Qowaiv.Validation.Abstractions;
+using Qowaiv.Validation.Abstractions;
 using SpaceTraders.UI.Extensions;
 using System.Linq;
 
@@ -6,7 +6,7 @@ namespace SpaceTraders.UI.Windows;
 
 internal sealed class WarningWindow : ClosableWindow
 {
-    private Result Data { get; set; }
+    private Result? Data { get; set; }
 
     public WarningWindow(RootScreen rootScreen)
         : base(rootScreen, 52, 20)

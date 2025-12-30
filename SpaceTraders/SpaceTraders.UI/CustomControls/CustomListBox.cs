@@ -1,56 +1,124 @@
-﻿using SadConsole;
 using SadConsole.UI.Controls;
 using SpaceTraders.UI.Interfaces;
 using System.Linq;
 
 namespace SpaceTraders.UI.CustomControls;
 
-public class CustomListBox: ListBox, IHaveABottomRightCorner, ICanSetData
+/// <summary>
+/// A custom list box control with auto-resize capability.
+/// </summary>
+public sealed class CustomListBox : ListBox, IHaveABottomRightCorner, ICanSetData
 {
-    private bool Resize { get; init; }
+    private bool ShouldResize { get; init; }
 
-    public CustomListBox(int width, int height, bool resize = true) : base(width, height)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CustomListBox"/> class.
+    /// </summary>
+    /// <param name="width">The width of the list box.</param>
+    /// <param name="height">The height of the list box.</param>
+    /// <param name="resize">Whether to auto-resize.</param>
+    public CustomListBox(int width, int height, bool resize = true)
+        : base(width, height)
     {
-        Resize = resize;
+        ShouldResize = resize;
     }
 
-    public void SetData(object[] items)
+    /// <summary>
+    /// Sets the data for the list box.
+    /// </summary>
+    /// <param name="text">The data to set.</param>
+    public void SetData(object[] text)
     {
         Items.Clear();
-        foreach (var item in items)
+        foreach (var item in text)
         {
             Items.Add(item);
         }
-        if (Resize)
+        if (ShouldResize)
         {
             Resize(ActualWidth, Height);
         }
         IsDirty = true;
     }
 
-    public int ActualWidth => Items.Any() ? Items.Max(i => (i.ToString() ?? "").Length + 2) : 35;
+    /// <summary>
+    /// Gets the actual width based on content.
+    /// </summary>
+    public int ActualWidth => Items.Any() ? Items.Max(i => (i.ToString() ?? string.Empty).Length + 2) : 35;
 
-
+    /// <summary>
+    /// Gets the bottom right corner position.
+    /// </summary>
     public (int X, int Y) BottomRightCorner => (Position.X + Width, Position.Y + Height);
 }
 
-public class CustomListBox<T> : CustomListBox
+/// <summary>
+/// A generic custom list box control with typed items.
+/// </summary>
+/// <typeparam name="T">The type of items in the list box.</typeparam>
+public sealed class CustomListBox<T> : ListBox, IHaveABottomRightCorner, ICanSetData
 {
-    T[] CustomItems { get; set; } = [];
+    private bool ShouldResize { get; init; }
 
-    public CustomListBox(int width, int height, bool resize = true) : base(width, height, resize)
+    private T[] CustomItems { get; set; } = [];
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CustomListBox{T}"/> class.
+    /// </summary>
+    /// <param name="width">The width of the list box.</param>
+    /// <param name="height">The height of the list box.</param>
+    /// <param name="resize">Whether to auto-resize.</param>
+    public CustomListBox(int width, int height, bool resize = true)
+        : base(width, height)
     {
+        ShouldResize = resize;
     }
 
+    /// <summary>
+    /// Sets the custom data items.
+    /// </summary>
+    /// <param name="items">The items to set.</param>
     public void SetCustomData(T[] items)
     {
         CustomItems = items;
         SetData(items.Cast<object>().ToArray());
     }
 
+    /// <summary>
+    /// Gets the currently selected item.
+    /// </summary>
+    /// <returns>The selected item.</returns>
     public T GetSelectedItem()
     {
         var selectedIndex = SelectedIndex;
         return CustomItems[selectedIndex];
     }
+
+    /// <summary>
+    /// Sets the data for the list box.
+    /// </summary>
+    /// <param name="text">The data to set.</param>
+    public void SetData(object[] text)
+    {
+        Items.Clear();
+        foreach (var item in text)
+        {
+            Items.Add(item);
+        }
+        if (ShouldResize)
+        {
+            Resize(ActualWidth, Height);
+        }
+        IsDirty = true;
+    }
+
+    /// <summary>
+    /// Gets the actual width based on content.
+    /// </summary>
+    public int ActualWidth => Items.Any() ? Items.Max(i => (i.ToString() ?? string.Empty).Length + 2) : 35;
+
+    /// <summary>
+    /// Gets the bottom right corner position.
+    /// </summary>
+    public (int X, int Y) BottomRightCorner => (Position.X + Width, Position.Y + Height);
 }

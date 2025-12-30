@@ -1,13 +1,8 @@
-﻿using Qowaiv.Validation.Abstractions;
-using SadConsole.UI.Controls;
-using SadRogue.Primitives;
-using SpaceTraders.Core.Enums;
+using Qowaiv.Validation.Abstractions;
 using SpaceTraders.Core.Models.ShipModels;
-using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
@@ -15,68 +10,59 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class RouteWindow : ClosableWindow, ICanSetSymbols
+internal sealed class RouteWindow : DataBoundWindowWithSymbols<Navigation>
 {
-    private string Symbol { get; set; } = string.Empty;
+    private readonly ShipService _shipService;
+    private readonly ShipNavService _shipNavService;
+    private readonly WaypointService _waypointService;
 
-    private ImmutableList<WaypointDistance> Waypoints { get; set; } = [];
-
-    private CustomListBox WaypointsListBox { get; set; }
-
-    private Navigation? Navigation { get; set; }
-    private ShipService ShipService { get; init; }
-    private ShipNavService ShipNavService { get; init; }
-    private WaypointService WaypointService { get; init; }
+    private ImmutableArray<WaypointDistance> _waypoints = [];
+    private CustomListBox? _waypointsListBox;
 
     public RouteWindow(RootScreen rootScreen, ShipService shipService, ShipNavService shipNavService, WaypointService waypointService)
         : base(rootScreen, 52, 20)
     {
-        shipService.Updated += LoadData;
-        ShipService = shipService;
-        ShipNavService = shipNavService;
-        WaypointService = waypointService;
-        DrawContent();
+        _shipService = shipService;
+        _shipNavService = shipNavService;
+        _waypointService = waypointService;
+
+        SubscribeToEvent<ImmutableArray<Ship>>(
+            handler => shipService.Updated += handler,
+            handler => shipService.Updated -= handler,
+            OnServiceUpdated);
+
+        Initialize();
     }
 
-    public Task LoadData(Ship[] data)
+    protected override Navigation? FetchData() =>
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol)?.Navigation;
+
+    protected override void BindData(Navigation data)
     {
-        if (Surface == null)
-            return Task.CompletedTask;
-        var navigation = data.FirstOrDefault(s => s.Symbol == Symbol)?.Navigation;
-        if (navigation == null)
-            return Task.CompletedTask;
-        if (Navigation is not null && Navigation == navigation)
-            return Task.CompletedTask;
         Title = $"Navigation for ship {Symbol}";
-        Navigation = navigation;
-        var waypointsForSystem = WaypointService.GetWaypoints().GetValueOrDefault(Navigation.SystemSymbol);
-        var orderedWaypoints = waypointsForSystem.OrderBy(wp => GetDistance((wp.X, wp.Y)));
-        Waypoints = orderedWaypoints.Select(wp => new WaypointDistance(wp.Symbol, GetDistance((wp.X, wp.Y)))).ToImmutableList();
 
-        Binds["Destination.Symbol"].SetData([$"{Navigation.Route.Destination.Symbol}"]);
-        Binds["Destination.SystemSymbol"].SetData([$"{Navigation.Route.Destination.SystemSymbol}"]);
-        Binds["Destination.Type"].SetData([$"{Navigation.Route.Destination.Type}"]);
+        var waypointsForSystem = _waypointService.GetWaypoints().GetValueOrDefault(data.SystemSymbol);
+        if (!waypointsForSystem.IsDefault)
+        {
+            var orderedWaypoints = waypointsForSystem.OrderBy(wp => GetDistance(data, (wp.X, wp.Y)));
+            _waypoints = [.. orderedWaypoints.Select(wp => new WaypointDistance(wp.Symbol, GetDistance(data, (wp.X, wp.Y))))];
+        }
 
-        Binds["Origin.Symbol"].SetData([$"{Navigation.Route.Origin.Symbol}"]);
-        Binds["Origin.SystemSymbol"].SetData([$"{Navigation.Route.Origin.SystemSymbol}"]);
-        Binds["Origin.Type"].SetData([$"{Navigation.Route.Origin.Type}"]);
+        Binds["Destination.Symbol"].SetData([$"{data.Route.Destination.Symbol}"]);
+        Binds["Destination.SystemSymbol"].SetData([$"{data.Route.Destination.SystemSymbol}"]);
+        Binds["Destination.Type"].SetData([$"{data.Route.Destination.Type}"]);
 
-        Binds["DepartureTime"].SetData([$"{Navigation.Route.DepartureTime:yyyy-MM-dd HH:mm:ss}"]);
-        Binds["ArrivalTime"].SetData([$"{Navigation.Route.ArrivalTime:yyyy-MM-dd HH:mm:ss}"]);
+        Binds["Origin.Symbol"].SetData([$"{data.Route.Origin.Symbol}"]);
+        Binds["Origin.SystemSymbol"].SetData([$"{data.Route.Origin.SystemSymbol}"]);
+        Binds["Origin.Type"].SetData([$"{data.Route.Origin.Type}"]);
 
-        Binds["WaypointList"].SetData([.. Waypoints.Select(w => w)]);
+        Binds["DepartureTime"].SetData([$"{data.Route.DepartureTime:yyyy-MM-dd HH:mm:ss}"]);
+        Binds["ArrivalTime"].SetData([$"{data.Route.ArrivalTime:yyyy-MM-dd HH:mm:ss}"]);
 
-        ResizeAndRedraw();
-        return Task.CompletedTask;
+        Binds["WaypointList"].SetData([.. _waypoints.Select(w => w)]);
     }
 
-    public void SetSymbol(string[] symbols)
-    {
-        Symbol = symbols[0];
-        LoadData(ShipService.GetShips().ToArray());
-    }
-
-    private void DrawContent()
+    protected override void DrawContent()
     {
         var y = 2;
         Controls.AddLabel($"Destination:", 2, y++);
@@ -102,15 +88,15 @@ internal sealed class RouteWindow : ClosableWindow, ICanSetSymbols
         Controls.AddButton($"Dock", 2, y++, (_, _) => RootScreen.ScheduleCommand(Dock));
         Controls.AddButton($"Orbit", 2, y++, (_, _) => RootScreen.ScheduleCommand(Orbit));
         y++;
-        WaypointsListBox = Controls.AddListbox("WaypointList", 2, y, 40, 7);
-        Binds.Add("WaypointList", WaypointsListBox);
-        y+= 7;
-        Controls.AddButton($"Navigate to waypoint", 2, y++, (_, _) => RootScreen.ScheduleCommand(Navigate));
+        _waypointsListBox = Controls.AddListbox("WaypointList", 2, y, 40, 7);
+        Binds.Add("WaypointList", _waypointsListBox);
+        y += 7;
+        Controls.AddButton($"Navigate to waypoint", 2, y, (_, _) => RootScreen.ScheduleCommand(Navigate));
     }
 
     private async Task Dock()
     {
-        var result = await ShipNavService.Dock(Symbol);
+        var result = await _shipNavService.Dock(Symbol);
         if (result.IsValid)
         {
             RootScreen.ShowWarningWindow(Result.WithMessages(ValidationMessage.Info("Ship successfully docked")));
@@ -123,9 +109,9 @@ internal sealed class RouteWindow : ClosableWindow, ICanSetSymbols
 
     private async Task Navigate()
     {
-        var list = WaypointsListBox;
-        var selectedWaypoint = list.SelectedItem as WaypointDistance;
-        var result = await ShipNavService.Navigate(Symbol, selectedWaypoint.Symbol);
+        if (_waypointsListBox?.SelectedItem is not WaypointDistance selectedWaypoint)
+            return;
+        var result = await _shipNavService.Navigate(Symbol, selectedWaypoint.Symbol);
         if (result.IsValid)
         {
             RootScreen.ShowWarningWindow(Result.WithMessages(ValidationMessage.Info("Ship successfully navigating")));
@@ -138,7 +124,7 @@ internal sealed class RouteWindow : ClosableWindow, ICanSetSymbols
 
     private async Task Orbit()
     {
-        var result = await ShipNavService.Orbit(Symbol);
+        var result = await _shipNavService.Orbit(Symbol);
         if (result.IsValid)
         {
             RootScreen.ShowWarningWindow(Result.WithMessages(ValidationMessage.Info("Ship successfully orbited")));
@@ -149,17 +135,18 @@ internal sealed class RouteWindow : ClosableWindow, ICanSetSymbols
         }
     }
 
-    private double GetDistance((int X, int Y) destination)
+    private double GetDistance(Navigation navigation, (int X, int Y) destination)
     {
-        var mysystem = WaypointService.GetWaypoints().GetValueOrDefault(Navigation.SystemSymbol);
-        var mywaypoint = mysystem.FirstOrDefault(s => s.Symbol == Navigation.WaypointSymbol);
-        var mylocation = (mywaypoint.X, mywaypoint.Y);
+        var mysystem = _waypointService.GetWaypoints().GetValueOrDefault(navigation.SystemSymbol);
+        if (mysystem.IsDefault) return 0;
+        var mywaypoint = mysystem.FirstOrDefault(s => s.Symbol == navigation.WaypointSymbol);
+        if (mywaypoint is null) return 0;
         var diffX = Math.Abs(destination.X - mywaypoint.X);
         var diffY = Math.Abs(destination.Y - mywaypoint.Y);
         return Math.Sqrt(diffX * diffX + diffY * diffY);
     }
 
-    private record WaypointDistance(string Symbol, double Distance)
+    private sealed record WaypointDistance(string Symbol, double Distance)
     {
         public override string ToString() => $"{Symbol} - Distance: {Distance:F2}";
     }

@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SpaceTraders.Core.Services;
@@ -22,12 +21,22 @@ namespace SpaceTraders.Core.Services;
 /// </remarks>
 public sealed class ShipService(Client.SpaceTradersService service, ModuleService moduleService)
 {
-    private ImmutableList<Ship> Ships { get; set; } = [];
+    private ImmutableArray<Ship> Ships { get; set; } = [];
 
-    public event Func<Ship[], Task>? Updated;
+    /// <summary>
+    /// Event raised when ships are updated.
+    /// </summary>
+    public event Func<ImmutableArray<Ship>, Task>? Updated;
 
+    /// <summary>
+    /// Event raised when a ship arrival time is noted.
+    /// </summary>
     public event Action<DateTimeOffset>? Arrived;
 
+    /// <summary>
+    /// Initializes the ship service by fetching ships.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task Initialize()
     {
         var ships = await service.GetAllPagesAsync(
@@ -42,20 +51,17 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
         Update(ship);
     }
 
-    private void Update(IEnumerable<Ship> ships)
-    {
-        Ships = ships.ToImmutableList();
-        foreach (var ship in Ships.Where(s => s.Navigation.Route.ArrivalTime > Clock.UtcNow()))
-        {
-            Arrived?.Invoke(ship.Navigation.Route.ArrivalTime);
-        }
-        Updated?.Invoke(ships.ToArray());
-    }
-
+    /// <summary>
+    /// Processes ship arrivals.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task Arrive()
     {
         if (Ships.IsEmpty)
+        {
             return;
+        }
+
         foreach (var ship in Ships.Where(c => c.Navigation.Route.ArrivalTime < Clock.UtcNow().AddSeconds(-1)))
         {
             var update = await service.EnqueueAsync((client, ct) => client.GetMyShipAsync(ship.Symbol, ct));
@@ -64,42 +70,87 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
         }
     }
 
+    /// <summary>
+    /// Updates a ship's navigation data.
+    /// </summary>
+    /// <param name="navigation">The navigation data.</param>
+    /// <param name="shipSymbol">The ship symbol.</param>
+    /// <returns>A result indicating success or failure.</returns>
+#pragma warning disable CS1998 // Async method lacks 'await' operators - interface requirement
     public async Task<Result> UpdateNav(Client.ShipNav navigation, string shipSymbol)
+#pragma warning restore CS1998
     {
         var ship = Ships.FirstOrDefault(s => s.Symbol == shipSymbol);
         if (ship == null)
+        {
             return Result.WithMessages(ValidationMessage.Error($"No ship found with ship symbol {shipSymbol} to update."));
+        }
 
         var updatedShip = ship with { Navigation = MapNavigation(navigation) };
         Update(Ships.Remove(ship).Add(updatedShip));
         return Result.OK;
     }
 
+    /// <summary>
+    /// Updates a ship's fuel data.
+    /// </summary>
+    /// <param name="fuel">The fuel data.</param>
+    /// <param name="shipSymbol">The ship symbol.</param>
+    /// <returns>A result indicating success or failure.</returns>
+#pragma warning disable CS1998 // Async method lacks 'await' operators - interface requirement
     public async Task<Result> UpdateFuel(Client.ShipFuel fuel, string shipSymbol)
+#pragma warning restore CS1998
     {
         var ship = Ships.FirstOrDefault(s => s.Symbol == shipSymbol);
         if (ship == null)
+        {
             return Result.WithMessages(ValidationMessage.Error($"No ship found with ship symbol {shipSymbol} to update."));
+        }
 
         var updatedShip = ship with { Fuel = MapFuel(fuel) };
         Update(Ships.Remove(ship).Add(updatedShip));
         return Result.OK;
     }
 
+    /// <summary>
+    /// Updates a ship's cargo data.
+    /// </summary>
+    /// <param name="cargo">The cargo data.</param>
+    /// <param name="shipSymbol">The ship symbol.</param>
+    /// <returns>A result indicating success or failure.</returns>
+#pragma warning disable CS1998 // Async method lacks 'await' operators - interface requirement
     public async Task<Result> UpdateCargo(Client.ShipCargo cargo, string shipSymbol)
+#pragma warning restore CS1998
     {
         var ship = Ships.FirstOrDefault(s => s.Symbol == shipSymbol);
         if (ship == null)
+        {
             return Result.WithMessages(ValidationMessage.Error($"No ship found with ship symbol {shipSymbol} to update."));
+        }
 
         var updatedShip = ship with { Cargo = MapCargo(cargo) };
         Update(Ships.Remove(ship).Add(updatedShip));
         return Result.OK;
     }
 
-    public ImmutableList<Ship> GetShips()
+    /// <summary>
+    /// Gets all ships.
+    /// </summary>
+    /// <returns>The ships.</returns>
+    public ImmutableArray<Ship> GetShips()
     {
         return Ships;
+    }
+
+    private void Update(IEnumerable<Ship> ships)
+    {
+        Ships = [.. ships];
+        foreach (var ship in Ships.Where(s => s.Navigation.Route.ArrivalTime > Clock.UtcNow()))
+        {
+            Arrived?.Invoke(ship.Navigation.Route.ArrivalTime);
+        }
+
+        Updated?.Invoke(Ships);
     }
 
     private static Ship MapShip(Client.Ship ship)
@@ -123,7 +174,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
 
     private static Cooldown MapCooldown(Client.Cooldown cooldown)
     {
-        return new()
+        return new ()
         {
             TotalSeconds = cooldown.TotalSeconds,
             RemainingSeconds = cooldown.RemainingSeconds,
@@ -133,7 +184,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
 
     private static Fuel MapFuel(Client.ShipFuel fuel)
     {
-        return new()
+        return new ()
         {
             Current = fuel.Current,
             Capacity = fuel.Capacity,
@@ -143,7 +194,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
 
     private static Consumed MapConsumed(Client.Consumed consumed)
     {
-        return new()
+        return new ()
         {
             Amount = consumed.Amount,
             Timestamp = consumed.Timestamp,
@@ -152,7 +203,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
 
     private static Cargo MapCargo(Client.ShipCargo cargo)
     {
-        return new()
+        return new ()
         {
             Capacity = cargo.Capacity,
             Units = cargo.Units,
@@ -176,10 +227,9 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
         };
     }
 
-
     private static Navigation MapNavigation(Client.ShipNav navigation)
     {
-        return new()
+        return new ()
         {
             SystemSymbol = navigation.SystemSymbol,
             WaypointSymbol = navigation.WaypointSymbol,
@@ -191,7 +241,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
 
     private static NavigationRoute MapRoute(Client.ShipNavRoute route)
     {
-        return new()
+        return new ()
         {
             Destination = MapWaypoint(route.Destination),
             Origin = MapWaypoint(route.Origin),
@@ -202,7 +252,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
 
     private static NavigationWaypoint MapWaypoint(Client.ShipNavRouteWaypoint waypoint)
     {
-        return new()
+        return new ()
         {
             Symbol = waypoint.Symbol,
             Type = waypoint.Type.Convert<Client.WaypointType, WaypointType>(),
@@ -214,7 +264,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
 
     private static Registration MapRegistration(Client.ShipRegistration registration)
     {
-        return new()
+        return new ()
         {
             Name = registration.Name,
             FactionSymbol = registration.FactionSymbol,

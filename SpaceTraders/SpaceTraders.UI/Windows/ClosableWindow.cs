@@ -1,12 +1,19 @@
-﻿using SadConsole.UI;
 using SadConsole.UI.Controls;
-using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-public class ClosableWindow : AutoResizableWindow
+/// <summary>
+/// A window that can be closed by clicking a close button.
+/// </summary>
+public abstract class ClosableWindow : AutoResizableWindow
 {
-    public ClosableWindow(RootScreen rootScreen, int width, int height)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ClosableWindow"/> class.
+    /// </summary>
+    /// <param name="rootScreen">The root screen.</param>
+    /// <param name="width">The initial width.</param>
+    /// <param name="height">The initial height.</param>
+    protected ClosableWindow(RootScreen rootScreen, int width, int height)
         : base(rootScreen, width, height)
     {
         var closeButton = new Button(3)

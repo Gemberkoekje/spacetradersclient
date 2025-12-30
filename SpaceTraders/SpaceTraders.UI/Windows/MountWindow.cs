@@ -1,44 +1,43 @@
-﻿using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class MountWindow : ClosableWindow, ICanSetSymbols
+internal sealed class MountWindow : DataBoundWindowWithSymbols<Mount>
 {
-    private Mount? Mount { get; set; }
+    private readonly ModuleService _moduleService;
 
-    private ModuleService ModuleService { get; init; }
-
-    public MountWindow(RootScreen rootScreen, ModuleService mountService)
+    public MountWindow(RootScreen rootScreen, ModuleService moduleService)
         : base(rootScreen, 52, 20)
     {
-        ModuleService = mountService;
-        DrawContent();
+        _moduleService = moduleService;
+
+        Initialize();
     }
 
-    public void SetSymbol(string[] symbols)
+    protected override Mount? FetchData()
     {
-        var mount = ModuleService.GetMounts().GetValueOrDefault(Enum.Parse<MountSymbol>(symbols[0]));
-        if (mount == null)
-            return;
-        Title = $"{mount.Name}";
-        Mount = mount;
-        Binds["Name"].SetData([$"{Mount.Name}"]);
-        Binds["Strength"].SetData([$"{Mount.Strength}"]);
-        Binds["Deposits"].SetData([.. Mount.Deposits.Select(d => $"{d}")]);
-        Binds["Power"].SetData([$"{Mount.Requirements.Power}"]);
-        Binds["Crew"].SetData([$"{Mount.Requirements.Crew}"]);
-        Binds["Slots"].SetData([$"{Mount.Requirements.Slots}"]);
-        ResizeAndRedraw();
+        if (string.IsNullOrEmpty(Symbol)) return null;
+        return _moduleService.GetMounts().GetValueOrDefault(Enum.Parse<MountSymbol>(Symbol));
     }
 
-    private void DrawContent()
+    protected override void BindData(Mount data)
+    {
+        Title = $"{data.Name}";
+        Binds["Name"].SetData([$"{data.Name}"]);
+        Binds["Strength"].SetData([$"{data.Strength}"]);
+        Binds["Deposits"].SetData([.. data.Deposits.Select(d => $"{d}")]);
+        Binds["Power"].SetData([$"{data.Requirements.Power}"]);
+        Binds["Crew"].SetData([$"{data.Requirements.Crew}"]);
+        Binds["Slots"].SetData([$"{data.Requirements.Slots}"]);
+    }
+
+    protected override void DrawContent()
     {
         var y = 2;
         Controls.AddLabel($"Name:", 2, y);
@@ -55,7 +54,5 @@ internal sealed class MountWindow : ClosableWindow, ICanSetSymbols
         y++;
         Controls.AddLabel($"Deposits:", 2, y);
         Binds.Add("Deposits", Controls.AddListbox($"Deposits", 22, y, 80, 10));
-        y += 10;
-
     }
 }

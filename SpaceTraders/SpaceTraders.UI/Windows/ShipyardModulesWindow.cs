@@ -1,74 +1,70 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
+using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.ShipyardModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System.Collections.Immutable;
 using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ShipyardModulesWindow : ClosableWindow, ICanSetSymbols
+internal sealed class ShipyardModulesWindow : DataBoundWindowWithSymbols<ImmutableArray<Module>>
 {
-    private string ShipSymbol { get; set; } = string.Empty;
+    private readonly ShipyardService _shipyardService;
+    private CustomListBox? _modulesListBox;
 
-    private string SystemSymbol { get; set; } = string.Empty;
+    // Symbols: [0] = ShipSymbol, [1] = WaypointSymbol, [2] = SystemSymbol
+    private string ShipSymbol => Symbols.Length > 0 ? Symbols[0] : string.Empty;
 
-    private string WaypointSymbol { get; set; } = string.Empty;
+    private string WaypointSymbol => Symbols.Length > 1 ? Symbols[1] : string.Empty;
 
-    private ImmutableList<Module> Modules { get; set; }
-
-    private CustomListBox ModulesListBox { get; set; }
-
-    private ShipyardService ShipyardService { get; init; }
+    private string SystemSymbol => Symbols.Length > 2 ? Symbols[2] : string.Empty;
 
     public ShipyardModulesWindow(RootScreen rootScreen, ShipyardService shipyardService)
         : base(rootScreen, 52, 20)
     {
-        ShipyardService = shipyardService;
-        shipyardService.Updated += LoadData;
-        DrawContent();
+        _shipyardService = shipyardService;
+
+        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Shipyard>>>(
+            handler => shipyardService.Updated += handler,
+            handler => shipyardService.Updated -= handler,
+            OnServiceUpdatedSync);
+
+        Initialize();
     }
 
-    public void SetSymbol(string[] symbols)
+    protected override ImmutableArray<Module> FetchData()
     {
-        ShipSymbol = symbols[0];
-        WaypointSymbol = symbols[1];
-        SystemSymbol = symbols[2] ?? string.Empty;
-        LoadData(ShipyardService.GetShipyards());
+        var shipyards = _shipyardService.GetShipyards().GetValueOrDefault(SystemSymbol);
+        if (shipyards.IsDefault) return [];
+        var shipyard = shipyards.FirstOrDefault(s => s.Symbol == WaypointSymbol);
+        var ship = shipyard?.Ships.FirstOrDefault(s => s.Type.ToString() == ShipSymbol);
+        return ship?.Modules ?? [];
     }
 
-    public void LoadData(ImmutableDictionary<string, ImmutableList<Shipyard>> data)
+    protected override void BindData(ImmutableArray<Module> data)
     {
-        if (Surface == null)
-            return;
-        var shipyard = data.GetValueOrDefault(SystemSymbol).First(s => s.Symbol == WaypointSymbol);
-
-        Title = $"Shipyard {shipyard.Symbol}";
-        var ship = shipyard.Ships.FirstOrDefault(s => s.Type.ToString() == ShipSymbol);
-        Modules = ship?.Modules ?? [];
-
-        Binds["Modules"].SetData([.. Modules.Select(module => $"{module.Name} (Capacity: {module.Capacity}, Range: {module.Range})")]);
-
-        ResizeAndRedraw();
+        Title = $"Shipyard {WaypointSymbol}";
+        Binds["Modules"].SetData([.. data.Select(module => $"{module.Name} (Capacity: {module.Capacity}, Range: {module.Range})")]);
     }
 
-    private void DrawContent()
+    protected override void DrawContent()
     {
         var y = 2;
-        ModulesListBox = Controls.AddListbox($"Modules", 2, y, 80, 10);
-        Binds.Add("Modules", ModulesListBox);
+        _modulesListBox = Controls.AddListbox($"Modules", 2, y, 80, 10);
+        Binds.Add("Modules", _modulesListBox);
         y += 10;
-        Controls.AddButton("Show Module", 2, y++, (_, _) => OpenModule());
+        Controls.AddButton("Show Module", 2, y, (_, _) => OpenModule());
     }
 
     private void OpenModule()
     {
-        var listbox = ModulesListBox;
-        if (listbox.SelectedIndex is int index and >= 0 && index < Modules.Count)
+        if (_modulesListBox is null || CurrentData.IsDefault)
+            return;
+        var listbox = _modulesListBox;
+        if (listbox.SelectedIndex is int index and >= 0 && index < CurrentData.Length)
         {
-            var module = Modules[index];
+            var module = CurrentData[index];
             RootScreen.ShowWindow<ModuleWindow>([module.Symbol.ToString()]);
         }
     }

@@ -1,4 +1,3 @@
-using SpaceTraders.Core.Enums;
 using System;
 using System.Text;
 
@@ -14,16 +13,29 @@ namespace SpaceTraders.Core.Extensions;
 /// </remarks>
 public static class EnumExtensions
 {
-    public static TOut Convert<TIn, TOut>(this TIn symbol) where TIn : Enum where TOut : struct
+    /// <summary>
+    /// Converts a client enum value to an internal enum value.
+    /// </summary>
+    /// <typeparam name="TIn">The source enum type.</typeparam>
+    /// <typeparam name="TOut">The target enum type.</typeparam>
+    /// <param name="symbol">The source enum value.</param>
+    /// <returns>The converted enum value.</returns>
+    public static TOut Convert<TIn, TOut>(this TIn symbol)
+        where TIn : Enum
+        where TOut : struct
     {
         var name = symbol.ToString();
         if (string.IsNullOrWhiteSpace(name))
+        {
             throw new ArgumentOutOfRangeException(nameof(symbol), $"Not expected {typeof(TIn).Name} value: {symbol}");
+        }
 
         // Split into tokens by underscore
         var tokens = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
         if (tokens.Length == 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(symbol), $"Not expected {typeof(TIn).Name} value: {symbol}");
+        }
 
         // Determine if the first token is a redundant enum-type prefix (e.g., FRAME_FRIGATE, ENGINE_ION_DRIVE_II)
         // We strip common suffixes from the target enum type (Symbol/Type/Status/Mode/Role) and compare.
@@ -46,7 +58,9 @@ public static class EnumExtensions
             }
 
             if (token.Length == 0)
+            {
                 continue;
+            }
 
             sb.Append(char.ToUpperInvariant(token[0]));
             if (token.Length > 1)
@@ -79,21 +93,27 @@ public static class EnumExtensions
                 break;
             }
         }
+
         return typeName.ToUpperInvariant();
     }
 
     private static bool IsRomanNumeral(string token)
     {
         if (token.Length == 0)
+        {
             return false;
+        }
 
         for (int i = 0; i < token.Length; i++)
         {
             var c = token[i];
             // Accept standard Roman numeral letters
-            if (c is not ('I' or 'V' or 'X' or 'L' or 'C' or 'D' or 'M'))
+            if (c is not('I' or 'V' or 'X' or 'L' or 'C' or 'D' or 'M'))
+            {
                 return false;
+            }
         }
+
         return true;
     }
 }

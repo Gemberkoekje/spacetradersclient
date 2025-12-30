@@ -1,74 +1,70 @@
-﻿using SpaceTraders.Core.Models.ShipModels;
+using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.ShipyardModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System.Collections.Immutable;
 using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ShipyardMountsWindow : ClosableWindow, ICanSetSymbols
+internal sealed class ShipyardMountsWindow : DataBoundWindowWithSymbols<ImmutableArray<Mount>>
 {
-    private string ShipSymbol { get; set; } = string.Empty;
+    private readonly ShipyardService _shipyardService;
+    private CustomListBox? _mountsListBox;
 
-    private string SystemSymbol { get; set; } = string.Empty;
+    // Symbols: [0] = ShipSymbol, [1] = WaypointSymbol, [2] = SystemSymbol
+    private string ShipSymbol => Symbols.Length > 0 ? Symbols[0] : string.Empty;
 
-    private string WaypointSymbol { get; set; } = string.Empty;
+    private string WaypointSymbol => Symbols.Length > 1 ? Symbols[1] : string.Empty;
 
-    private ImmutableList<Mount> Mounts { get; set; }
-
-    private CustomListBox MountsListBox { get; set; }
-
-    private ShipyardService ShipyardService { get; init; }
+    private string SystemSymbol => Symbols.Length > 2 ? Symbols[2] : string.Empty;
 
     public ShipyardMountsWindow(RootScreen rootScreen, ShipyardService shipyardService)
         : base(rootScreen, 52, 20)
     {
-        ShipyardService = shipyardService;
-        shipyardService.Updated += LoadData;
-        DrawContent();
+        _shipyardService = shipyardService;
+
+        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Shipyard>>>(
+            handler => shipyardService.Updated += handler,
+            handler => shipyardService.Updated -= handler,
+            OnServiceUpdatedSync);
+
+        Initialize();
     }
 
-    public void SetSymbol(string[] symbols)
+    protected override ImmutableArray<Mount> FetchData()
     {
-        ShipSymbol = symbols[0];
-        WaypointSymbol = symbols[1];
-        SystemSymbol = symbols[2] ?? string.Empty;
-        LoadData(ShipyardService.GetShipyards());
+        var shipyards = _shipyardService.GetShipyards().GetValueOrDefault(SystemSymbol);
+        if (shipyards.IsDefault) return [];
+        var shipyard = shipyards.FirstOrDefault(s => s.Symbol == WaypointSymbol);
+        var ship = shipyard?.Ships.FirstOrDefault(s => s.Type.ToString() == ShipSymbol);
+        return ship?.Mounts ?? [];
     }
 
-    public void LoadData(ImmutableDictionary<string, ImmutableList<Shipyard>> data)
+    protected override void BindData(ImmutableArray<Mount> data)
     {
-        if (Surface == null)
-            return;
-        var shipyard = data.GetValueOrDefault(SystemSymbol).First(s => s.Symbol == WaypointSymbol);
-
-        Title = $"Shipyard {shipyard.Symbol}";
-        var ship = shipyard.Ships.FirstOrDefault(s => s.Type.ToString() == ShipSymbol);
-        Mounts = ship?.Mounts ?? [];
-
-        Binds["Mounts"].SetData([.. Mounts.Select(mount => $"{mount.Name} (Strength: {mount.Strength}{(mount.Deposits.Any() ? $", Deposits: {mount.Deposits.Count}" : "")})")]);
-
-        ResizeAndRedraw();
+        Title = $"Shipyard {WaypointSymbol}";
+        Binds["Mounts"].SetData([.. data.Select(mount => $"{mount.Name} (Strength: {mount.Strength}{(mount.Deposits.Any() ? $", Deposits: {mount.Deposits.Count}" : string.Empty)})")]);
     }
 
-    private void DrawContent()
+    protected override void DrawContent()
     {
         var y = 2;
-        MountsListBox = Controls.AddListbox($"Mounts", 2, y, 80, 10);
-        Binds.Add("Mounts", MountsListBox);
+        _mountsListBox = Controls.AddListbox($"Mounts", 2, y, 80, 10);
+        Binds.Add("Mounts", _mountsListBox);
         y += 10;
-        Controls.AddButton("Show Mount", 2, y++, (_, _) => OpenMount());
+        Controls.AddButton("Show Mount", 2, y, (_, _) => OpenMount());
     }
 
     private void OpenMount()
     {
-        var listbox = MountsListBox;
-        if (listbox.SelectedIndex is int index and >= 0 && index < Mounts.Count)
+        if (_mountsListBox is null || CurrentData.IsDefault)
+            return;
+        var listbox = _mountsListBox;
+        if (listbox.SelectedIndex is int index and >= 0 && index < CurrentData.Length)
         {
-            var mount = Mounts[index];
+            var mount = CurrentData[index];
             RootScreen.ShowWindow<MountWindow>([mount.Symbol.ToString()]);
         }
     }
