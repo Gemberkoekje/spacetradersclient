@@ -1,21 +1,26 @@
 ﻿using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.ShipyardModels;
 using SpaceTraders.Core.Services;
+using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
 using SpaceTraders.UI.Interfaces;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
 internal sealed class ShipyardMountsWindow : ClosableWindow, ICanSetSymbols
 {
     private string ShipSymbol { get; set; } = string.Empty;
+
     private string SystemSymbol { get; set; } = string.Empty;
+
     private string WaypointSymbol { get; set; } = string.Empty;
 
     private ImmutableList<Mount> Mounts { get; set; }
+
+    private CustomListBox MountsListBox { get; set; }
+
     private ShipyardService ShipyardService { get; init; }
 
     public ShipyardMountsWindow(RootScreen rootScreen, ShipyardService shipyardService)
@@ -41,26 +46,30 @@ internal sealed class ShipyardMountsWindow : ClosableWindow, ICanSetSymbols
         var shipyard = data.GetValueOrDefault(SystemSymbol).First(s => s.Symbol == WaypointSymbol);
 
         Title = $"Shipyard {shipyard.Symbol}";
-        var shipyardShip = shipyard.Ships.FirstOrDefault(s => s.Type.ToString() == ShipSymbol);
-        Mounts = shipyardShip?.Mounts ?? ImmutableList<Mount>.Empty;
-        DrawContent();
+        var ship = shipyard.Ships.FirstOrDefault(s => s.Type.ToString() == ShipSymbol);
+        Mounts = ship?.Mounts ?? [];
+
+        Binds["Mounts"].SetData([.. Mounts.Select(mount => $"{mount.Name} (Strength: {mount.Strength}{(mount.Deposits.Any() ? $", Deposits: {mount.Deposits.Count}" : "")})")]);
+
+        ResizeAndRedraw();
     }
 
     private void DrawContent()
     {
-        Clean();
-        if (Mounts is null)
-        {
-            Controls.AddLabel($"Mounts loading...", 2, 2);
-            ResizeAndRedraw();
-            return;
-        }
         var y = 2;
-        foreach (var mount in Mounts)
-        {
-            Controls.AddButton($"{mount.Name} (Strength: {mount.Strength}{(mount.Deposits.Any() ? $", Deposits: {mount.Deposits.Count}" : "")})", 2, y++, (_, _) => RootScreen.ShowWindow<MountWindow>([mount.Symbol.ToString()]));
-        }
+        MountsListBox = Controls.AddListbox($"Mounts", 2, y, 80, 10);
+        Binds.Add("Mounts", MountsListBox);
+        y += 10;
+        Controls.AddButton("Show Mount", 2, y++, (_, _) => OpenMount());
+    }
 
-        ResizeAndRedraw();
+    private void OpenMount()
+    {
+        var listbox = MountsListBox;
+        if (listbox.SelectedIndex is int index and >= 0 && index < Mounts.Count)
+        {
+            var mount = Mounts[index];
+            RootScreen.ShowWindow<MountWindow>([mount.Symbol.ToString()]);
+        }
     }
 }

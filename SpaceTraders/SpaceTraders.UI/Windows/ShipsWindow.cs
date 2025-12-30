@@ -1,7 +1,7 @@
 ﻿using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
+using SpaceTraders.UI.CustomControls;
 using SpaceTraders.UI.Extensions;
-using SpaceTraders.UI.Interfaces;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -11,10 +11,13 @@ internal sealed class ShipsWindow : ClosableWindow
 {
     private Ship[] Ships { get; set; } = [];
 
+    private CustomListBox? ShipsListBox { get; set; }
+
     public ShipsWindow(RootScreen rootScreen, ShipService shipService)
         : base(rootScreen, 52, 11)
     {
         shipService.Updated += LoadData;
+        DrawContent();
         LoadData(shipService.GetShips().ToArray());
     }
 
@@ -27,25 +30,29 @@ internal sealed class ShipsWindow : ClosableWindow
 
         Ships = data;
         Title = $"Ships";
-        DrawContent();
+        Binds["Ships"].SetData([.. Ships.Select(ship => $"{ship.Registration.Name} ({ship.Registration.Role} {ship.Frame.Name} at {ship.Navigation.WaypointSymbol} in {ship.Navigation.SystemSymbol})")]);
+        ResizeAndRedraw();
         return Task.CompletedTask;
     }
 
     private void DrawContent()
     {
-        Clean();
-        if (Ships.Length == 0)
-        {
-            Controls.AddLabel($"Ships loading...", 2, 2);
-            ResizeAndRedraw();
-            return;
-        }
-        int y = 2;
-        foreach (var ship in Ships)
-        {
-            Controls.AddButton($"{ship.Registration.Name} ({ship.Registration.Role} {ship.Frame.Name} at {ship.Navigation.WaypointSymbol} in {ship.Navigation.SystemSymbol})", 2, y++, (_, _) => RootScreen.ShowWindow<ShipWindow>([ship.Symbol]));
-        }
-        ResizeAndRedraw();
+        var y = 2;
+        ShipsListBox = Controls.AddListbox($"Ships", 2, y, 80, 10);
+        Binds.Add("Ships", ShipsListBox);
+        y += 10;
+        Controls.AddButton("Show Ship", 2, y++, (_, _) => OpenShip());
     }
 
+    private void OpenShip()
+    {
+        if (ShipsListBox is null)
+            return;
+        var listbox = ShipsListBox;
+        if (listbox.SelectedIndex is int index and >= 0 && index < Ships.Length)
+        {
+            var ship = Ships[index];
+            RootScreen.ShowWindow<ShipWindow>([ship.Symbol]);
+        }
+    }
 }

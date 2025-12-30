@@ -24,32 +24,42 @@ internal sealed class ReactorWindow : ClosableWindow, ICanSetSymbols
     public void SetSymbol(string[] symbols)
     {
         var reactor = ModuleService.GetReactors().GetValueOrDefault(Enum.Parse<ReactorSymbol>(symbols[0]));
-        if (reactor != null)
+        if (reactor == null)
         {
-            Title = $"{reactor.Name}";
+            return;
         }
+        Title = $"{reactor.Name}";
         Reactor = reactor;
-        DrawContent();
+        Binds["Name"].SetData([$"{Reactor.Name}"]);
+        Binds["Condition"].SetData([$"{Reactor.Condition}"]);
+        Binds["Integrity"].SetData([$"{Reactor.Integrity}"]);
+        Binds["PowerOutput"].SetData([$"{Reactor.PowerOutput}"]);
+        Binds["Requirements.Power"].SetData([$"{Reactor.Requirements.Power}"]);
+        Binds["Requirements.Crew"].SetData([$"{Reactor.Requirements.Crew}"]);
+        Binds["Requirements.Slots"].SetData([$"{Reactor.Requirements.Slots}"]);
+        Binds["Quality"].SetData([$"{Reactor.Quality}"]);
+
+        ResizeAndRedraw();
     }
 
     private void DrawContent()
     {
-        Clean();
-        if (Reactor is null)
-        {
-            Controls.AddLabel($"Reactor data loading...", 2, 2);
-            ResizeAndRedraw();
-            return;
-        }
         var y = 2;
-        Controls.AddLabel($"Name: {Reactor.Name}", 2, y++);
-        Controls.AddLabel($"Condition: {Reactor.Condition}", 2, y++);
-        Controls.AddLabel($"Integrity: {Reactor.Integrity}", 2, y++);
-        Controls.AddLabel($"PowerOutput: {Reactor.PowerOutput}", 2, y++);
-        Controls.AddLabel($"Power Requirements: {Reactor.Requirements.Power}", 2, y++);
-        Controls.AddLabel($"Crew Requirements: {Reactor.Requirements.Crew}", 2, y++);
-        Controls.AddLabel($"Slots Requirements: {Reactor.Requirements.Slots}", 2, y++);
-        Controls.AddLabel($"Quality: {Reactor.Quality}", 2, y++);
-        ResizeAndRedraw();
+        Controls.AddLabel($"Name:", 2, y);
+        Binds.Add("Name", Controls.AddLabel($"Reactor.Name", 22, y++));
+        Controls.AddLabel($"Condition:", 2, y);
+        Binds.Add("Condition", Controls.AddLabel($"Reactor.Condition", 22, y++));
+        Controls.AddLabel($"Integrity:", 2, y);
+        Binds.Add("Integrity", Controls.AddLabel($"Reactor.Integrity", 22, y++));
+        Controls.AddLabel($"Power Output:", 2, y);
+        Binds.Add("PowerOutput", Controls.AddLabel($"Reactor.PowerOutput", 22, y++));
+        Controls.AddLabel($"Power Requirements:", 2, y);
+        Binds.Add("Requirements.Power", Controls.AddLabel($"Reactor.Requirements.Power", 22, y++));
+        Controls.AddLabel($"Crew Requirements:", 2, y);
+        Binds.Add("Requirements.Crew", Controls.AddLabel($"Reactor.Requirements.Crew", 22, y++));
+        Controls.AddLabel($"Slots Requirements:", 2, y);
+        Binds.Add("Requirements.Slots", Controls.AddLabel($"Reactor.Requirements.Slots", 22, y++));
+        Controls.AddLabel($"Quality:", 2, y);
+        Binds.Add("Quality", Controls.AddLabel($"Reactor.Quality", 22, y++));
     }
 }

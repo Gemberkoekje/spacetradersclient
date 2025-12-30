@@ -1,3 +1,6 @@
+using Qowaiv;
+using SpaceTraders.Core.Enums;
+using System;
 using System.Collections.Immutable;
 
 namespace SpaceTraders.Core.Models.ShipModels;
@@ -49,4 +52,39 @@ public sealed record Ship
     public bool CanOrbit => Navigation.Status == Enums.ShipNavStatus.Docked;
 
     public bool CanNavigate => Navigation.Status == Enums.ShipNavStatus.InOrbit && Cooldown.RemainingSeconds == 0;
+
+    public (int X, int Y)? Position
+    {
+        get
+        {
+            if (Navigation.Status != Enums.ShipNavStatus.InTransit)
+                return (Navigation.Route.Destination.X, Navigation.Route.Destination.Y);
+
+            var diffX = Navigation.Route.Destination.X - Navigation.Route.Origin.X;
+            var diffY = Navigation.Route.Destination.Y - Navigation.Route.Origin.Y;
+            var totalSeconds = (Navigation.Route.ArrivalTime - Navigation.Route.DepartureTime).TotalSeconds;
+            var elapsedSeconds = (Clock.UtcNow() - Navigation.Route.DepartureTime).TotalSeconds;
+            var ratio = elapsedSeconds / totalSeconds;
+            var currentX = Navigation.Route.Origin.X + (int)(diffX * ratio);
+            var currentY = Navigation.Route.Origin.Y + (int)(diffY * ratio);
+            return (currentX, currentY);
+        }
+    }
+
+    public Direction Direction
+    {
+        get
+        {
+            var deltaX = Navigation.Route.Destination.X - Navigation.Route.Origin.X;
+            var deltaY = Navigation.Route.Destination.Y - Navigation.Route.Origin.Y;
+            if (Math.Abs(deltaX) > Math.Abs(deltaY))
+            {
+                return deltaX > 0 ? Direction.East : Direction.West;
+            }
+            else
+            {
+                return deltaY > 0 ? Direction.North : Direction.South;
+            }
+        }
+    }
 }

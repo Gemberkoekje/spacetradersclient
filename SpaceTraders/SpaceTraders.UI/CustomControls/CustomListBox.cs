@@ -33,3 +33,24 @@ public class CustomListBox: ListBox, IHaveABottomRightCorner, ICanSetData
 
     public (int X, int Y) BottomRightCorner => (Position.X + Width, Position.Y + Height);
 }
+
+public class CustomListBox<T> : CustomListBox
+{
+    T[] CustomItems { get; set; } = [];
+
+    public CustomListBox(int width, int height, bool resize = true) : base(width, height, resize)
+    {
+    }
+
+    public void SetCustomData(T[] items)
+    {
+        CustomItems = items;
+        SetData(items.Cast<object>().ToArray());
+    }
+
+    public T GetSelectedItem()
+    {
+        var selectedIndex = SelectedIndex;
+        return CustomItems[selectedIndex];
+    }
+}

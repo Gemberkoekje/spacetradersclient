@@ -118,4 +118,21 @@ public static class ControlHostExtensions
         controls.Add(listbox);
         return listbox;
     }
+    public static CustomListBox<T> AddListbox<T>(this ControlHost controls, string name, int x, int y, int width, int height, bool resize = true, Color? color = null)
+    {
+        var listbox = new CustomListBox<T>(width, height, resize)
+        {
+            Name = name,
+            Position = new Point(x, y),
+            DrawBorder = true,
+        };
+
+        var colors = Colors.CreateAnsi();
+        colors.Appearance_ControlNormal.Foreground = color ?? colors.Appearance_ControlNormal.Foreground;
+        colors.Lines.SetColor(Color.DarkSlateGray);
+        listbox.SetThemeColors(colors);
+
+        controls.Add(listbox);
+        return listbox;
+    }
 }

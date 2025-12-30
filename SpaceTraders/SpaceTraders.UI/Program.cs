@@ -56,7 +56,6 @@ using var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<ReactorWindow>();
         services.AddTransient<ShipyardWindow>();
         services.AddTransient<TransactionsWindow>();
-        services.AddTransient<ShipyardShipsWindow>();
         services.AddTransient<ShipyardShipWindow>();
         services.AddTransient<SystemsWindow>();
         services.AddTransient<ShipyardModulesWindow>();
