@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class MountWindow : DataBoundWindowWithSymbols<Mount>
+internal sealed class MountWindow : DataBoundWindowWithContext<Mount, MountContext>
 {
     private readonly ModuleService _moduleService;
 
@@ -22,8 +22,7 @@ internal sealed class MountWindow : DataBoundWindowWithSymbols<Mount>
 
     protected override Mount? FetchData()
     {
-        if (string.IsNullOrEmpty(Symbol)) return null;
-        return _moduleService.GetMounts().GetValueOrDefault(Enum.Parse<MountSymbol>(Symbol));
+        return _moduleService.GetMounts().GetValueOrDefault(Context.Mount);
     }
 
     protected override void BindData(Mount data)

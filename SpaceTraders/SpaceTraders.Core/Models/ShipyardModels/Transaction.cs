@@ -1,3 +1,4 @@
+using SpaceTraders.Core.IDs;
 using System;
 
 namespace SpaceTraders.Core.Models.ShipyardModels;
@@ -10,7 +11,7 @@ public sealed record Transaction
     /// <summary>
     /// Gets the waypoint symbol.
     /// </summary>
-    required public string WaypointSymbol { get; init; }
+    required public WaypointSymbol WaypointSymbol { get; init; }
 
     /// <summary>
     /// Gets the ship type.
@@ -25,7 +26,7 @@ public sealed record Transaction
     /// <summary>
     /// Gets the agent symbol.
     /// </summary>
-    required public string AgentSymbol { get; init; }
+    required public AgentSymbol AgentSymbol { get; init; }
 
     /// <summary>
     /// Gets the transaction timestamp.

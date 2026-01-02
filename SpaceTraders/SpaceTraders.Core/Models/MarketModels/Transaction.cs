@@ -1,4 +1,5 @@
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 using System;
 
 namespace SpaceTraders.Core.Models.MarketModels;
@@ -11,12 +12,12 @@ public sealed record Transaction
     /// <summary>
     /// Gets the waypoint symbol where the transaction occurred.
     /// </summary>
-    required public string WaypointSymbol { get; init; }
+    required public WaypointSymbol WaypointSymbol { get; init; }
 
     /// <summary>
     /// Gets the ship symbol that made the transaction.
     /// </summary>
-    required public string ShipSymbol { get; init; }
+    required public ShipSymbol ShipSymbol { get; init; }
 
     /// <summary>
     /// Gets the trade symbol of the goods.

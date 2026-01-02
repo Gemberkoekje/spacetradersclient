@@ -1,3 +1,4 @@
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.AgentModels;
 using System;
 using System.Threading.Tasks;
@@ -54,7 +55,7 @@ public sealed class AgentService(Client.SpaceTradersService service)
     {
         return new Agent
         {
-            Symbol = agent.Symbol,
+            Symbol = AgentSymbol.Parse(agent.Symbol),
             Headquarters = agent.Headquarters,
             Credits = agent.Credits,
             StartingFaction = agent.StartingFaction,

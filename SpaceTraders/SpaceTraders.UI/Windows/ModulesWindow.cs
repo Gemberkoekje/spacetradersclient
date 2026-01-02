@@ -1,3 +1,5 @@
+using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
@@ -8,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ModulesWindow : DataBoundWindowWithSymbols<ImmutableArray<Module>>
+internal sealed class ModulesWindow : DataBoundWindowWithContext<ImmutableArray<Module>, ShipContext>
 {
     private readonly ShipService _shipService;
     private CustomListBox<ModuleListValue>? _modulesListBox;
@@ -27,11 +29,11 @@ internal sealed class ModulesWindow : DataBoundWindowWithSymbols<ImmutableArray<
     }
 
     protected override ImmutableArray<Module> FetchData() =>
-        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol)?.Modules ?? [];
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Context.Ship)?.Modules ?? [];
 
     protected override void BindData(ImmutableArray<Module> data)
     {
-        Title = $"Modules for ship {Symbol}";
+        Title = $"Modules for ship {Context.Ship}";
         _modulesListBox?.SetCustomData([.. data.Select(module => new ModuleListValue(module))]);
     }
 
@@ -48,7 +50,7 @@ internal sealed class ModulesWindow : DataBoundWindowWithSymbols<ImmutableArray<
     {
         if (_modulesListBox?.GetSelectedItem() is ModuleListValue moduleListValue)
         {
-            RootScreen.ShowWindow<ModuleWindow>([moduleListValue.Module.Symbol.ToString()]);
+            RootScreen.ShowWindow<ModuleWindow, ModuleContext>(new (moduleListValue.Module.Symbol));
         }
     }
 

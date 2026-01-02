@@ -1,3 +1,4 @@
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class CargoWindow : DataBoundWindowWithSymbols<Cargo>
+internal sealed class CargoWindow : DataBoundWindowWithContext<Cargo, ShipContext>
 {
     private readonly ShipService _shipService;
 
@@ -25,11 +26,11 @@ internal sealed class CargoWindow : DataBoundWindowWithSymbols<Cargo>
     }
 
     protected override Cargo? FetchData() =>
-        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol)?.Cargo;
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Context.Ship)?.Cargo;
 
     protected override void BindData(Cargo data)
     {
-        Title = $"Cargo for ship {Symbol}";
+        Title = $"Cargo for ship {Context.Ship}";
         Binds["CargoList"].SetData(data.Inventory.Select(c => $"{new string(' ', 5 - c.Units.ToString("#.###").Length)}{c.Units:#.###} {c.Name}").ToArray());
         Binds["Total"].SetData([$"{data.Units} / {data.Capacity}"]);
     }

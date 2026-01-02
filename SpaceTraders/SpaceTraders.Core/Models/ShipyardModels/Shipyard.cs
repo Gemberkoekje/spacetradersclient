@@ -1,4 +1,5 @@
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 using System.Collections.Immutable;
 
 namespace SpaceTraders.Core.Models.ShipyardModels;
@@ -11,7 +12,7 @@ public sealed record Shipyard
     /// <summary>
     /// Gets the shipyard symbol.
     /// </summary>
-    required public string Symbol { get; init; }
+    required public WaypointSymbol Symbol { get; init; }
 
     /// <summary>
     /// Gets the ship types available at this shipyard.

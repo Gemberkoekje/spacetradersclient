@@ -2,6 +2,7 @@
   <Project Path=".net.csproj" />
   <Project Path="Spacetraders.Client/Spacetraders.Client.csproj" DisplayName="SpaceTraders.Client" />
   <Project Path="SpaceTraders.Core/SpaceTraders.Core.csproj" />
+  <Project Path="SpaceTraders.Infrastructure/SpaceTraders.Infrastructure.csproj" />
   <Project Path="SpaceTraders.Specs/SpaceTraders.Specs.csproj" />
   <Project Path="SpaceTraders.UI/SpaceTraders.UI.csproj" />
 </Solution>

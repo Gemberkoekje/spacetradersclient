@@ -1,3 +1,4 @@
+using SpaceTraders.Core.IDs;
 using SpaceTraders.UI.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -10,16 +11,11 @@ namespace SpaceTraders.UI.Windows;
 /// Provides automatic event subscription cleanup on disposal.
 /// </summary>
 /// <typeparam name="TData">The type of data this window displays.</typeparam>
-public abstract class DataBoundWindow<TData> : ClosableWindow, ICanSetSymbols
+public abstract class DataBoundWindow<TData> : ClosableWindow
 {
     private readonly List<Action> _unsubscribeActions = [];
     private bool _disposed;
     private bool _initialized;
-
-    /// <summary>
-    /// The symbols passed to this window for data filtering/lookup.
-    /// </summary>
-    protected string[] Symbols { get; private set; } = [];
 
     /// <summary>
     /// The currently displayed data. Used for change detection.
@@ -87,18 +83,7 @@ public abstract class DataBoundWindow<TData> : ClosableWindow, ICanSetSymbols
     }
 
     /// <summary>
-    /// Called by RootScreen when the window is shown with symbols.
-    /// </summary>
-    /// <param name="symbols">The symbols to set.</param>
-    public void SetSymbol(string[] symbols)
-    {
-        Symbols = symbols;
-        OnSymbolsSet();
-        RefreshData();
-    }
-
-    /// <summary>
-    /// Override to perform additional setup when symbols are set, before data is fetched.
+    /// Override to perform additional setup when context/symbols are set, before data is fetched.
     /// </summary>
     protected virtual void OnSymbolsSet() { }
 
@@ -204,7 +189,7 @@ public abstract class DataBoundWindow<TData> : ClosableWindow, ICanSetSymbols
 }
 
 /// <summary>
-/// Base class for windows that don't require symbol parameters but still display service data.
+/// Base class for windows that don't require context parameters but still display service data.
 /// Derived classes must call Initialize(refreshImmediately: true) at the end of their constructor.
 /// </summary>
 /// <typeparam name="TData">The type of data this window displays.</typeparam>
@@ -224,31 +209,53 @@ public abstract class DataBoundWindowNoSymbols<TData> : DataBoundWindow<TData>
 }
 
 /// <summary>
-/// Base class for windows that require symbol parameters.
+/// Non-generic interface for context-based windows to enable simpler ShowWindow calls.
+/// </summary>
+/// <typeparam name="TContext">The symbol context type.</typeparam>
+public interface IDataBoundWindowWithContext<in TContext>
+    where TContext : ISymbolContext
+{
+    /// <summary>
+    /// Sets the context for the window.
+    /// </summary>
+    /// <param name="context">The context to set.</param>
+    void SetContext(TContext context);
+}
+
+/// <summary>
+/// Base class for windows that require a typed symbol context.
 /// Derived classes must call Initialize() at the end of their constructor.
 /// </summary>
 /// <typeparam name="TData">The type of data this window displays.</typeparam>
-public abstract class DataBoundWindowWithSymbols<TData> : DataBoundWindow<TData>
+/// <typeparam name="TContext">The symbol context type containing all required symbols.</typeparam>
+public abstract class DataBoundWindowWithContext<TData, TContext> : DataBoundWindow<TData>, IDataBoundWindowWithContext<TContext>
+    where TContext : ISymbolContext
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="DataBoundWindowWithSymbols{TData}"/> class.
+    /// Initializes a new instance of the <see cref="DataBoundWindowWithContext{TData, TContext}"/> class.
     /// </summary>
     /// <param name="rootScreen">The root screen.</param>
     /// <param name="width">The initial width.</param>
     /// <param name="height">The initial height.</param>
-    protected DataBoundWindowWithSymbols(RootScreen rootScreen, int width, int height)
+    protected DataBoundWindowWithContext(RootScreen rootScreen, int width, int height)
         : base(rootScreen, width, height)
     {
         // Derived classes must call Initialize() at end of their constructor
     }
 
     /// <summary>
-    /// Gets the primary symbol (first in the array).
+    /// Gets the symbol context containing all required symbols for this window.
     /// </summary>
-    protected string Symbol => Symbols.Length > 0 ? Symbols[0] : string.Empty;
+    protected TContext Context { get; private set; } = default!;
 
     /// <summary>
-    /// Gets the parent/secondary symbol (second in the array).
+    /// Called by RootScreen when the window is shown with a context.
     /// </summary>
-    protected string ParentSymbol => Symbols.Length > 1 ? Symbols[1] : string.Empty;
+    /// <param name="context">The context to set.</param>
+    public void SetContext(TContext context)
+    {
+        Context = context;
+        OnSymbolsSet();
+        RefreshData();
+    }
 }

@@ -1,3 +1,4 @@
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.AgentModels;
 
 namespace SpaceTraders.Core.Extensions;
@@ -8,7 +9,7 @@ internal static class AgentExtensions
     {
         return new Agent
         {
-            Symbol = agent.Symbol,
+            Symbol = AgentSymbol.Parse(agent.Symbol),
             Headquarters = agent.Headquarters,
             Credits = agent.Credits,
             StartingFaction = agent.StartingFaction,
@@ -20,7 +21,7 @@ internal static class AgentExtensions
     {
         return new Agent
         {
-            Symbol = agent.Symbol,
+            Symbol = AgentSymbol.Parse(agent.Symbol),
             Headquarters = agent.Headquarters,
             Credits = agent.Credits,
             StartingFaction = agent.StartingFaction,

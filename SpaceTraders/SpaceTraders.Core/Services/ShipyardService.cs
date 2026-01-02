@@ -1,6 +1,7 @@
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipyardModels;
 using System;
 using System.Collections.Immutable;
@@ -17,12 +18,12 @@ namespace SpaceTraders.Core.Services;
 /// <param name="moduleService">The module service.</param>
 public sealed class ShipyardService(Client.SpaceTradersService service, WaypointService waypointService, ModuleService moduleService)
 {
-    private ImmutableDictionary<string, ImmutableArray<Shipyard>> Shipyards { get; set; } = ImmutableDictionary<string, ImmutableArray<Shipyard>>.Empty;
+    private ImmutableDictionary<SystemSymbol, ImmutableArray<Shipyard>> Shipyards { get; set; } = ImmutableDictionary<SystemSymbol, ImmutableArray<Shipyard>>.Empty;
 
     /// <summary>
     /// Event raised when shipyards are updated.
     /// </summary>
-    public event Action<ImmutableDictionary<string, ImmutableArray<Shipyard>>>? Updated;
+    public event Action<ImmutableDictionary<SystemSymbol, ImmutableArray<Shipyard>>>? Updated;
 
     /// <summary>
     /// Initializes the shipyard service.
@@ -40,7 +41,7 @@ public sealed class ShipyardService(Client.SpaceTradersService service, Waypoint
     /// <param name="systemSymbol">The system symbol.</param>
     /// <param name="waypointSymbol">The waypoint symbol.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task AddWaypoint(string systemSymbol, string waypointSymbol)
+    public async Task AddWaypoint(SystemSymbol systemSymbol, WaypointSymbol waypointSymbol)
     {
         var waypoints = waypointService.GetWaypoints().GetValueOrDefault(systemSymbol);
         if (waypoints.IsDefault || (!waypoints.FirstOrDefault(wp => wp.Symbol == waypointSymbol)?.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Shipyard) ?? false))
@@ -48,7 +49,7 @@ public sealed class ShipyardService(Client.SpaceTradersService service, Waypoint
             return;
         }
 
-        var shipyard = await service.EnqueueAsync((client, ct) => client.GetShipyardAsync(systemSymbol, waypointSymbol, ct));
+        var shipyard = await service.EnqueueAsync((client, ct) => client.GetShipyardAsync(systemSymbol.ToString(), waypointSymbol.ToString(), ct));
         var systemList = Shipyards.GetValueOrDefault(systemSymbol);
         if (systemList.IsDefault)
         {
@@ -69,12 +70,12 @@ public sealed class ShipyardService(Client.SpaceTradersService service, Waypoint
     /// Gets all shipyards.
     /// </summary>
     /// <returns>The shipyards dictionary.</returns>
-    public ImmutableDictionary<string, ImmutableArray<Shipyard>> GetShipyards()
+    public ImmutableDictionary<SystemSymbol, ImmutableArray<Shipyard>> GetShipyards()
     {
         return Shipyards;
     }
 
-    private void Update(ImmutableDictionary<string, ImmutableArray<Shipyard>> shipyards)
+    private void Update(ImmutableDictionary<SystemSymbol, ImmutableArray<Shipyard>> shipyards)
     {
         Shipyards = shipyards;
         Updated?.Invoke(shipyards);
@@ -84,14 +85,14 @@ public sealed class ShipyardService(Client.SpaceTradersService service, Waypoint
     {
         return new Shipyard()
         {
-            Symbol = w.Symbol,
+            Symbol = WaypointSymbol.Parse(w.Symbol),
             ShipTypes = w.ShipTypes.Select(st => st.Type.Convert<Client.ShipType, ShipType>()).ToImmutableHashSet(),
             Transactions = w.Transactions.Select(t => new Transaction()
             {
-                WaypointSymbol = t.WaypointSymbol,
+                WaypointSymbol = WaypointSymbol.Parse(t.WaypointSymbol),
                 ShipType = t.ShipType,
                 Price = t.Price,
-                AgentSymbol = t.AgentSymbol,
+                AgentSymbol = AgentSymbol.Parse(t.AgentSymbol),
                 Timestamp = t.Timestamp,
             }).ToImmutableHashSet(),
             Ships = w.Ships.Select(s => new ShipyardShip()

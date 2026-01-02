@@ -1,4 +1,5 @@
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 
 namespace SpaceTraders.Core.Models.ShipModels;
 
@@ -14,12 +15,12 @@ public sealed record Navigation
     /// <summary>
     /// Symbol of the system the ship is currently in (e.g. system identifier).
     /// </summary>
-    required public string SystemSymbol { get; init; }
+    required public SystemSymbol SystemSymbol { get; init; }
 
     /// <summary>
     /// Symbol of the waypoint the ship is currently at or traveling toward.
     /// </summary>
-    required public string WaypointSymbol { get; init; }
+    required public WaypointSymbol WaypointSymbol { get; init; }
 
     /// <summary>
     /// The active navigation route including origin, destination and timing.

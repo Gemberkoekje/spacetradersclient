@@ -1,4 +1,5 @@
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 
 namespace SpaceTraders.Core.Models.ShipModels;
 
@@ -14,7 +15,7 @@ public sealed record NavigationWaypoint
     /// <summary>
     /// Unique waypoint symbol identifier.
     /// </summary>
-    required public string Symbol { get; init; }
+    required public WaypointSymbol Symbol { get; init; }
 
     /// <summary>
     /// The category of waypoint (planet, station, asteroid, etc.).
@@ -24,7 +25,7 @@ public sealed record NavigationWaypoint
     /// <summary>
     /// Symbol of the system this waypoint belongs to.
     /// </summary>
-    required public string SystemSymbol { get; init; }
+    required public SystemSymbol SystemSymbol { get; init; }
 
     /// <summary>
     /// X coordinate within the system grid.

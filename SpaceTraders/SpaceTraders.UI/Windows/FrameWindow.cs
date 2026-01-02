@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class FrameWindow : DataBoundWindowWithSymbols<Frame>
+internal sealed class FrameWindow : DataBoundWindowWithContext<Frame, FrameContext>
 {
     private readonly ModuleService _moduleService;
 
@@ -21,8 +21,7 @@ internal sealed class FrameWindow : DataBoundWindowWithSymbols<Frame>
 
     protected override Frame? FetchData()
     {
-        if (string.IsNullOrEmpty(Symbol)) return null;
-        return _moduleService.GetFrames().GetValueOrDefault(Enum.Parse<FrameSymbol>(Symbol));
+        return _moduleService.GetFrames().GetValueOrDefault(Context.Frame);
     }
 
     protected override void BindData(Frame data)

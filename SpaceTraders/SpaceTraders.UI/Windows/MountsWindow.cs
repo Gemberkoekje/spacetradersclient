@@ -1,3 +1,5 @@
+using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
@@ -8,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class MountsWindow : DataBoundWindowWithSymbols<ImmutableArray<Mount>>
+internal sealed class MountsWindow : DataBoundWindowWithContext<ImmutableArray<Mount>, ShipContext>
 {
     private readonly ShipService _shipService;
     private CustomListBox<MountListValue>? _mountsListBox;
@@ -27,11 +29,11 @@ internal sealed class MountsWindow : DataBoundWindowWithSymbols<ImmutableArray<M
     }
 
     protected override ImmutableArray<Mount> FetchData() =>
-        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol)?.Mounts ?? [];
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Context.Ship)?.Mounts ?? [];
 
     protected override void BindData(ImmutableArray<Mount> data)
     {
-        Title = $"Mounts for ship {Symbol}";
+        Title = $"Mounts for ship {Context.Ship}";
         _mountsListBox?.SetCustomData([.. data.Select(mount => new MountListValue(mount))]);
     }
 
@@ -48,7 +50,7 @@ internal sealed class MountsWindow : DataBoundWindowWithSymbols<ImmutableArray<M
     {
         if (_mountsListBox?.GetSelectedItem() is MountListValue mountListValue)
         {
-            RootScreen.ShowWindow<MountWindow>([mountListValue.Mount.Symbol.ToString()]);
+            RootScreen.ShowWindow<MountWindow, MountContext>(new (mountListValue.Mount.Symbol));
         }
     }
 

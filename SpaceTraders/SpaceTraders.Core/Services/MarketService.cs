@@ -1,6 +1,7 @@
 using Qowaiv.Validation.Abstractions;
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.MarketModels;
 using System;
 using System.Collections.Generic;
@@ -19,12 +20,12 @@ namespace SpaceTraders.Core.Services;
 /// <param name="agentService">The agent service.</param>
 public sealed class MarketService(Client.SpaceTradersService service, WaypointService waypointService, ShipService shipService, AgentService agentService)
 {
-    private ImmutableDictionary<string, ImmutableArray<Market>> Markets { get; set; } = ImmutableDictionary<string, ImmutableArray<Market>>.Empty;
+    private ImmutableDictionary<SystemSymbol, ImmutableArray<Market>> Markets { get; set; } = ImmutableDictionary<SystemSymbol, ImmutableArray<Market>>.Empty;
 
     /// <summary>
     /// Event raised when markets are updated.
     /// </summary>
-    public event Action<ImmutableDictionary<string, ImmutableArray<Market>>>? Updated;
+    public event Action<ImmutableDictionary<SystemSymbol, ImmutableArray<Market>>>? Updated;
 
     /// <summary>
     /// Initializes the market service.
@@ -42,7 +43,7 @@ public sealed class MarketService(Client.SpaceTradersService service, WaypointSe
     /// <param name="systemSymbol">The system symbol.</param>
     /// <param name="waypointSymbol">The waypoint symbol.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task AddWaypoint(string systemSymbol, string waypointSymbol)
+    public async Task AddWaypoint(SystemSymbol systemSymbol, WaypointSymbol waypointSymbol)
     {
         var systemWaypoints = waypointService.GetWaypoints().GetValueOrDefault(systemSymbol);
         if (systemWaypoints.IsDefaultOrEmpty || (!systemWaypoints.FirstOrDefault(wp => wp.Symbol == waypointSymbol)?.Traits.Any(t => t.Symbol == WaypointTraitSymbol.Marketplace) ?? false))
@@ -50,7 +51,7 @@ public sealed class MarketService(Client.SpaceTradersService service, WaypointSe
             return;
         }
 
-        var shipyard = await service.EnqueueAsync((client, ct) => client.GetMarketAsync(systemSymbol, waypointSymbol, ct));
+        var shipyard = await service.EnqueueAsync((client, ct) => client.GetMarketAsync(systemSymbol.ToString(), waypointSymbol.ToString(), ct));
         var systemList = Markets.GetValueOrDefault(systemSymbol);
         if (systemList.IsDefault)
         {
@@ -67,7 +68,7 @@ public sealed class MarketService(Client.SpaceTradersService service, WaypointSe
     /// </summary>
     /// <param name="shipSymbol">The ship symbol.</param>
     /// <returns>A result indicating success or failure.</returns>
-    public async Task<Result> Refuel(string shipSymbol)
+    public async Task<Result> Refuel(ShipSymbol shipSymbol)
     {
         var ship = shipService.GetShips().FirstOrDefault(s => s.Symbol == shipSymbol);
         if (ship == null)
@@ -82,7 +83,7 @@ public sealed class MarketService(Client.SpaceTradersService service, WaypointSe
             return Result.WithMessages(ValidationMessage.Error($"Ship cannot be refueled, not at a market."));
         }
 
-        var result = await service.EnqueueAsync((client, ct) => client.RefuelShipAsync(new () { Units = ship.Fuel.Capacity - ship.Fuel.Current }, shipSymbol, ct), true);
+        var result = await service.EnqueueAsync((client, ct) => client.RefuelShipAsync(new () { Units = ship.Fuel.Capacity - ship.Fuel.Current }, shipSymbol.ToString(), ct), true);
         if (!result.IsValid)
         {
             return result;
@@ -107,12 +108,12 @@ public sealed class MarketService(Client.SpaceTradersService service, WaypointSe
     /// Gets all markets.
     /// </summary>
     /// <returns>The markets dictionary.</returns>
-    public ImmutableDictionary<string, ImmutableArray<Market>> GetMarkets()
+    public ImmutableDictionary<SystemSymbol, ImmutableArray<Market>> GetMarkets()
     {
         return Markets;
     }
 
-    private void Update(ImmutableDictionary<string, ImmutableArray<Market>> markets)
+    private void Update(ImmutableDictionary<SystemSymbol, ImmutableArray<Market>> markets)
     {
         Markets = markets;
         Updated?.Invoke(markets);
@@ -122,14 +123,14 @@ public sealed class MarketService(Client.SpaceTradersService service, WaypointSe
     {
         return new Market()
         {
-            Symbol = w.Symbol,
+            Symbol = WaypointSymbol.Parse(w.Symbol),
             Exports = w.Exports.Select(tg => MapTradeGood(tg)).ToImmutableHashSet(),
             Imports = w.Imports.Select(tg => MapTradeGood(tg)).ToImmutableHashSet(),
             Exchange = w.Exchange.Select(tg => MapTradeGood(tg)).ToImmutableHashSet(),
             Transactions = w.Transactions.Select(t => new Transaction()
             {
-                WaypointSymbol = t.WaypointSymbol,
-                ShipSymbol = t.ShipSymbol,
+                WaypointSymbol = WaypointSymbol.Parse(t.WaypointSymbol),
+                ShipSymbol = ShipSymbol.Parse(t.ShipSymbol),
                 TradeSymbol = t.TradeSymbol,
                 Type = t.Type.Convert<Client.MarketTransactionType, MarketTransactionType>(),
                 Units = t.Units,

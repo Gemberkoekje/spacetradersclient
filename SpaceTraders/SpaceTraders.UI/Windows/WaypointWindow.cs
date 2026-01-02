@@ -1,5 +1,8 @@
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
+using SpaceTraders.Core.Models.MarketModels;
 using SpaceTraders.Core.Models.ShipModels;
+using SpaceTraders.Core.Models.ShipyardModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
@@ -12,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class WaypointWindow : DataBoundWindowWithSymbols<Waypoint>
+internal sealed class WaypointWindow : DataBoundWindowWithContext<Waypoint, WaypointContext>
 {
     private readonly WaypointService _waypointService;
     private readonly ShipService _shipService;
@@ -28,7 +31,7 @@ internal sealed class WaypointWindow : DataBoundWindowWithSymbols<Waypoint>
         _waypointService = waypointService;
         _shipService = shipService;
 
-        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Waypoint>>>(
+        SubscribeToEvent<ImmutableDictionary<SystemSymbol, ImmutableArray<Waypoint>>>(
             handler => waypointService.Updated += handler,
             handler => waypointService.Updated -= handler,
             OnServiceUpdated);
@@ -43,13 +46,13 @@ internal sealed class WaypointWindow : DataBoundWindowWithSymbols<Waypoint>
 
     protected override Waypoint? FetchData()
     {
-        var waypoints = _waypointService.GetWaypoints().GetValueOrDefault(ParentSymbol);
-        return waypoints.IsDefault ? null : waypoints.FirstOrDefault(d => d.Symbol == Symbol);
+        var waypoints = _waypointService.GetWaypoints().GetValueOrDefault(Context.System);
+        return waypoints.IsDefault ? null : waypoints.FirstOrDefault(d => d.Symbol == Context.Waypoint);
     }
 
     protected override void BindData(Waypoint data)
     {
-        Title = $"Waypoint {Symbol} in {ParentSymbol}";
+        Title = $"Waypoint {Context.Waypoint} in {Context.System}";
 
         // Update ships for this waypoint
         _ships = [.. _shipService.GetShips().Where(d => d.Navigation.WaypointSymbol == data.Symbol)];
@@ -62,8 +65,8 @@ internal sealed class WaypointWindow : DataBoundWindowWithSymbols<Waypoint>
         _buttons["Construction"].IsEnabled = false;
         _shipsListBox?.SetData([.. _ships.OrderBy(s => s.Symbol).Select(s => $"{s.Symbol} ({s.Registration.Role})")]);
         _orbitalsListBox?.SetData([.. data.Orbitals.OrderBy(w => w)]);
-        _buttons["Orbits"].SetData([$"{(!string.IsNullOrEmpty(data.Orbits) ? data.Orbits : "Orbits the sun")}"]);
-        _buttons["Orbits"].IsEnabled = !string.IsNullOrEmpty(data.Orbits);
+        _buttons["Orbits"].SetData([$"{(data.Orbits != WaypointSymbol.Empty ? data.Orbits : "Orbits the sun")}"]);
+        _buttons["Orbits"].IsEnabled = data.Orbits != WaypointSymbol.Empty;
         Binds["Traits"].SetData([.. data.Traits.Where(t => !IsSpecialTrait(t.Symbol)).OrderBy(w => w.Name).Select(t => t.Name)]);
         Binds["Modifiers"].SetData([.. data.Modifiers.Select(m => m.Name)]);
     }
@@ -84,8 +87,8 @@ internal sealed class WaypointWindow : DataBoundWindowWithSymbols<Waypoint>
         Binds.Add("Type", Controls.AddLabel($"Waypoint.Type", 21, y++));
         Controls.AddLabel($"Location:", 2, y);
         Binds.Add("Location", Controls.AddLabel($"Waypoint.Location", 21, y++));
-        _buttons.Add("Shipyard", Controls.AddButton($"Shipyard", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardWindow>([Symbol, ParentSymbol])));
-        _buttons.Add("Marketplace", Controls.AddButton($"Marketplace", 2, y++, (_, _) => RootScreen.ShowWindow<MarketWindow>([Symbol, ParentSymbol])));
+        _buttons.Add("Shipyard", Controls.AddButton($"Shipyard", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardWindow, WaypointContext>(Context)));
+        _buttons.Add("Marketplace", Controls.AddButton($"Marketplace", 2, y++, (_, _) => RootScreen.ShowWindow<MarketWindow, WaypointContext>(Context)));
         _buttons.Add("Construction", Controls.AddButton($"Is Under Construction", 2, y++, (_, _) => throw new NotSupportedException()));
         y++;
         Controls.AddLabel($"Ships at this Waypoint:", 2, y++);
@@ -101,7 +104,7 @@ internal sealed class WaypointWindow : DataBoundWindowWithSymbols<Waypoint>
         Controls.AddButton("Show Orbital", 2, y++, (_, _) => OpenOrbital());
         y++;
         Controls.AddLabel($"Orbits:", 2, y);
-        _buttons.Add("Orbits", Controls.AddButton($"Waypoint.Orbits", 11, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>([CurrentData!.Orbits, CurrentData.SystemSymbol])));
+        _buttons.Add("Orbits", Controls.AddButton($"Waypoint.Orbits", 11, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow, WaypointContext>(new (CurrentData!.Orbits, CurrentData.SystemSymbol))));
         y++;
         Controls.AddLabel($"Traits:", 2, y++);
         Binds.Add("Traits", Controls.AddListbox($"Traits", 2, y, 80, 7));
@@ -124,7 +127,7 @@ internal sealed class WaypointWindow : DataBoundWindowWithSymbols<Waypoint>
         if (listbox.SelectedIndex is int index and >= 0 && index < _ships.Length)
         {
             var ship = _ships[index];
-            RootScreen.ShowWindow<ShipWindow>([ship.Symbol]);
+            RootScreen.ShowWindow<ShipWindow, ShipContext>(new (ship.Symbol));
         }
     }
 
@@ -136,7 +139,7 @@ internal sealed class WaypointWindow : DataBoundWindowWithSymbols<Waypoint>
         if (listbox.SelectedIndex is int index and >= 0 && index < CurrentData.Orbitals.Length)
         {
             var orbital = CurrentData.Orbitals[index];
-            RootScreen.ShowWindow<WaypointWindow>([orbital, CurrentData.SystemSymbol]);
+            RootScreen.ShowWindow<WaypointWindow, WaypointContext>(new (orbital, CurrentData.SystemSymbol));
         }
     }
 }

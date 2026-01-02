@@ -1,3 +1,5 @@
+using SpaceTraders.Core.IDs;
+
 namespace SpaceTraders.Core.Models.AgentModels;
 
 /// <summary>
@@ -8,7 +10,7 @@ public sealed record Agent
     /// <summary>
     /// Gets the agent symbol.
     /// </summary>
-    required public string Symbol { get; init; }
+    required public AgentSymbol Symbol { get; init; }
 
     /// <summary>
     /// Gets the agent's headquarters location.

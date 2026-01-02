@@ -1,4 +1,5 @@
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 using System.Collections.Immutable;
 
 namespace SpaceTraders.Core.Models.SystemModels;
@@ -16,12 +17,12 @@ public sealed record SystemWaypoint
     /// <summary>
     /// Gets the system symbol.
     /// </summary>
-    required public string Symbol { get; init; }
+    required public SystemSymbol Symbol { get; init; }
 
     /// <summary>
     /// Gets the sector symbol.
     /// </summary>
-    required public string SectorSymbol { get; init; }
+    required public SectorSymbol SectorSymbol { get; init; }
 
     /// <summary>
     /// Gets the system type.

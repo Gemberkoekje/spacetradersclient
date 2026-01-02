@@ -1,5 +1,6 @@
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.SystemModels;
 using System;
 using System.Collections.Generic;
@@ -40,9 +41,9 @@ public sealed class SystemService(Client.SpaceTradersService service, WaypointSe
     /// </summary>
     /// <param name="symbol">The system symbol.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task AddSystem(string symbol)
+    public async Task AddSystem(SystemSymbol symbol)
     {
-        var systems = await service.EnqueueAsync((client, ct) => client.GetSystemAsync(symbol, ct));
+        var systems = await service.EnqueueAsync((client, ct) => client.GetSystemAsync(symbol.ToString(), ct));
         Update(Systems.Add(MapSystemWaypoint(systems.Value.Data)));
     }
 
@@ -66,8 +67,8 @@ public sealed class SystemService(Client.SpaceTradersService service, WaypointSe
         return new SystemWaypoint()
         {
             Constellation = s.Constellation,
-            Symbol = s.Symbol,
-            SectorSymbol = s.SectorSymbol,
+            Symbol = SystemSymbol.Parse(s.Symbol),
+            SectorSymbol = SectorSymbol.Parse(s.SectorSymbol),
             SystemType = s.Type.Convert<Client.SystemType, SystemType>(),
             X = s.X,
             Y = s.Y,

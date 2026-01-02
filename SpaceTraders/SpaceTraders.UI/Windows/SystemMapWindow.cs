@@ -1,6 +1,7 @@
 using SadConsole;
 using SadRogue.Primitives;
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
@@ -14,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class SystemMapWindow : DataBoundWindowWithSymbols<SystemWaypoint>
+internal sealed class SystemMapWindow : DataBoundWindowWithContext<SystemWaypoint, SystemContext>
 {
     private readonly SystemService _systemService;
     private readonly WaypointService _waypointService;
@@ -36,7 +37,7 @@ internal sealed class SystemMapWindow : DataBoundWindowWithSymbols<SystemWaypoin
             handler => systemService.Updated -= handler,
             OnServiceUpdatedSync);
 
-        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Waypoint>>>(
+        SubscribeToEvent<ImmutableDictionary<SystemSymbol, ImmutableArray<Waypoint>>>(
             handler => waypointService.Updated += handler,
             handler => waypointService.Updated -= handler,
             OnWaypointsUpdated);
@@ -50,15 +51,15 @@ internal sealed class SystemMapWindow : DataBoundWindowWithSymbols<SystemWaypoin
     }
 
     protected override SystemWaypoint? FetchData() =>
-        _systemService.GetSystems().FirstOrDefault(d => d.Symbol == Symbol);
+        _systemService.GetSystems().FirstOrDefault(d => d.Symbol == Context.System);
 
     protected override void BindData(SystemWaypoint data)
     {
-        Title = $"System {data.Symbol}";
+        Title = $"System {Context.System}";
 
         // Update waypoints and ships
-        _waypoints = _waypointService.GetWaypoints().GetValueOrDefault(Symbol);
-        _ships = [.. _shipService.GetShips().Where(d => d.Navigation.SystemSymbol == Symbol)];
+        _waypoints = _waypointService.GetWaypoints().GetValueOrDefault(Context.System);
+        _ships = [.. _shipService.GetShips().Where(d => d.Navigation.SystemSymbol == Context.System)];
 
         if (_waypoints.IsDefault || _waypoints.Length == 0)
             return;
@@ -70,7 +71,7 @@ internal sealed class SystemMapWindow : DataBoundWindowWithSymbols<SystemWaypoin
         MapShips(minX, minY, desiredWidth, desiredHeight, singleX, singleY, scaleX, scaleY, offsetX, offsetY);
     }
 
-    private Task OnWaypointsUpdated(ImmutableDictionary<string, ImmutableArray<Waypoint>> _)
+    private Task OnWaypointsUpdated(ImmutableDictionary<SystemSymbol, ImmutableArray<Waypoint>> _)
     {
         RefreshData();
         return Task.CompletedTask;
@@ -129,15 +130,15 @@ internal sealed class SystemMapWindow : DataBoundWindowWithSymbols<SystemWaypoin
             canvasX = Math.Clamp(canvasX, 0, desiredWidth - 1);
             canvasY = Math.Clamp(canvasY, 0, desiredHeight - 1);
 
-            var currentLabel = Binds.GetValueOrDefault(ship.Symbol);
+            var currentLabel = Binds.GetValueOrDefault(ship.Symbol.ToString());
 
             if (currentLabel is null)
             {
-                Binds.Add(ship.Symbol, Controls.AddLabel($"{ShipSymbol(ship.Direction)}", canvasX, canvasY, Color.White));
+                Binds.Add(ship.Symbol.ToString(), Controls.AddLabel($"{ShipSymbol(ship.Direction)}", canvasX, canvasY, Color.White));
             }
             else
             {
-                Binds[ship.Symbol].SetData([$"{ShipSymbol(ship.Direction)}"]);
+                Binds[ship.Symbol.ToString()].SetData([$"{ShipSymbol(ship.Direction)}"]);
             }
         }
     }
@@ -171,7 +172,7 @@ internal sealed class SystemMapWindow : DataBoundWindowWithSymbols<SystemWaypoin
 
     private void MapWaypoints(int minX, int minY, int desiredWidth, int desiredHeight, bool singleX, bool singleY, float scaleX, float scaleY, float offsetX, float offsetY)
     {
-        foreach (var waypoint in _waypoints.Where(w => string.IsNullOrEmpty(w.Orbits)))
+        foreach (var waypoint in _waypoints.Where(w => w.Orbits != WaypointSymbol.Empty))
         {
             var hasShips = _ships.Any(s => s.Navigation.WaypointSymbol == waypoint.Symbol && s.Navigation.Status != ShipNavStatus.InTransit);
 
@@ -189,16 +190,16 @@ internal sealed class SystemMapWindow : DataBoundWindowWithSymbols<SystemWaypoin
             canvasX = Math.Clamp(canvasX, 0, desiredWidth - 1);
             canvasY = Math.Clamp(canvasY, 0, desiredHeight - 1);
 
-            var currentLabel = _waypointBinds.GetValueOrDefault(waypoint.Symbol);
+            var currentLabel = _waypointBinds.GetValueOrDefault(waypoint.Symbol.ToString());
 
             if (currentLabel is null)
             {
-                _waypointBinds.Add(waypoint.Symbol, Controls.AddLabel($"{WaypointSymbol(waypoint.Type)}", canvasX, canvasY, hasShips ? Color.Cyan : Color.White));
+                _waypointBinds.Add(waypoint.Symbol.ToString(), Controls.AddLabel($"{WaypointVisualSymbol(waypoint.Type)}", canvasX, canvasY, hasShips ? Color.Cyan : Color.White));
             }
             else
             {
-                _waypointBinds[waypoint.Symbol].TextColor = hasShips ? Color.Cyan : Color.White;
-                _waypointBinds[waypoint.Symbol].SetData([$"{WaypointSymbol(waypoint.Type)}"]);
+                _waypointBinds[waypoint.Symbol.ToString()].TextColor = hasShips ? Color.Cyan : Color.White;
+                _waypointBinds[waypoint.Symbol.ToString()].SetData([$"{WaypointVisualSymbol(waypoint.Type)}"]);
             }
         }
     }
@@ -244,7 +245,7 @@ internal sealed class SystemMapWindow : DataBoundWindowWithSymbols<SystemWaypoin
         };
     }
 
-    private static string WaypointSymbol(WaypointType type)
+    private static string WaypointVisualSymbol(WaypointType type)
     {
         return type switch
         {

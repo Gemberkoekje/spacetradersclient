@@ -1,4 +1,8 @@
+using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
+using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.ShipyardModels;
+using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using System.Collections.Immutable;
@@ -6,23 +10,16 @@ using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ShipyardShipWindow : DataBoundWindowWithSymbols<ShipyardShip>
+internal sealed class ShipyardShipWindow : DataBoundWindowWithContext<ShipyardShip, ShipyardShipContext>
 {
     private readonly ShipyardService _shipyardService;
-
-    // Symbols: [0] = ShipSymbol, [1] = WaypointSymbol, [2] = SystemSymbol
-    private string ShipSymbol => Symbols.Length > 0 ? Symbols[0] : string.Empty;
-
-    private string WaypointSymbol => Symbols.Length > 1 ? Symbols[1] : string.Empty;
-
-    private string SystemSymbol => Symbols.Length > 2 ? Symbols[2] : string.Empty;
 
     public ShipyardShipWindow(RootScreen rootScreen, ShipyardService shipyardService)
         : base(rootScreen, 52, 20)
     {
         _shipyardService = shipyardService;
 
-        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Shipyard>>>(
+        SubscribeToEvent<ImmutableDictionary<SystemSymbol, ImmutableArray<Shipyard>>>(
             handler => shipyardService.Updated += handler,
             handler => shipyardService.Updated -= handler,
             OnServiceUpdatedSync);
@@ -32,23 +29,23 @@ internal sealed class ShipyardShipWindow : DataBoundWindowWithSymbols<ShipyardSh
 
     protected override ShipyardShip? FetchData()
     {
-        var shipyards = _shipyardService.GetShipyards().GetValueOrDefault(SystemSymbol);
+        var shipyards = _shipyardService.GetShipyards().GetValueOrDefault(Context.System);
         if (shipyards.IsDefault) return null;
-        var shipyard = shipyards.FirstOrDefault(s => s.Symbol == WaypointSymbol);
-        return shipyard?.Ships.FirstOrDefault(s => s.Type.ToString() == ShipSymbol);
+        var shipyard = shipyards.FirstOrDefault(s => s.Symbol == Context.Waypoint);
+        return shipyard?.Ships.FirstOrDefault(s => s.Type == Context.ShipType);
     }
 
     protected override void BindData(ShipyardShip data)
     {
-        Title = $"{data.Type} {data.Frame.Name} at shipyard {WaypointSymbol}";
+        Title = $"{data.Type} {data.Frame.Name} at shipyard {Context.Waypoint}";
         Binds["PurchasePrice"].SetData([$"{data.PurchasePrice}"]);
         Binds["Activity"].SetData([$"{data.Activity}"]);
         Binds["Supply"].SetData([$"{data.Supply}"]);
         Binds["Name"].SetData([$"{data.Name}"]);
-        Binds["Shipyard"].SetData([$"Shipyard {WaypointSymbol} in {SystemSymbol}"]);
+        Binds["Shipyard"].SetData([$"Shipyard {Context.Waypoint} in {Context.System}"]);
         Binds["Type"].SetData([$"{data.Type} {data.Frame.Name}"]);
-        Binds["Navigation.Status"].SetData([$"Purchasable at {WaypointSymbol} in {SystemSymbol}"]);
-        Binds["Navigation.WaypointSymbol"].SetData([$"{WaypointSymbol}"]);
+        Binds["Navigation.Status"].SetData([$"Purchasable at {Context.Waypoint} in {Context.System}"]);
+        Binds["Navigation.WaypointSymbol"].SetData([$"{Context.Waypoint}"]);
         Binds["Cargo"].SetData([$"(0 / {data.CargoCapacity})"]);
         Binds["Fuel"].SetData([$"{data.Frame.FuelCapacity} / {data.Frame.FuelCapacity}"]);
         Binds["Cooldown"].SetData(["No Cooldown"]);
@@ -81,18 +78,18 @@ internal sealed class ShipyardShipWindow : DataBoundWindowWithSymbols<ShipyardSh
         Controls.AddLabel($"Navigation:", 2, y);
         Binds.Add("Navigation.Status", Controls.AddLabel($"Ship.Navigation.Status", 14, y++));
         Controls.AddLabel($"Waypoint:", 2, y);
-        Binds.Add("Navigation.WaypointSymbol", Controls.AddButton($"Ship.Navigation.WaypointSymbol", 14, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>([WaypointSymbol, SystemSymbol])));
+        Binds.Add("Navigation.WaypointSymbol", Controls.AddButton($"Ship.Navigation.WaypointSymbol", 14, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow, WaypointContext>(new (Context.Waypoint, Context.System))));
         Controls.AddLabel($"Cargo:", 2, y);
         Binds.Add("Cargo", Controls.AddLabel($"Ship.Cargo", 14, y++));
         Controls.AddLabel($"Fuel:", 2, y);
         Binds.Add("Fuel", Controls.AddLabel($"Ship.Fuel", 14, y++));
         Binds.Add("Cooldown", Controls.AddLabel($"Ship.Cooldown", 2, y++));
         y++;
-        Binds.Add("Frame", Controls.AddButton($"Frame.Name", 2, y++, (_, _) => RootScreen.ShowWindow<FrameWindow>([CurrentData!.Frame.Symbol.ToString()])));
-        Binds.Add("Reactor", Controls.AddButton($"Reactor.Name", 2, y++, (_, _) => RootScreen.ShowWindow<ReactorWindow>([CurrentData!.Reactor.Symbol.ToString()])));
-        Binds.Add("Engine", Controls.AddButton($"Engine.Name", 2, y++, (_, _) => RootScreen.ShowWindow<EngineWindow>([CurrentData!.Engine.Symbol.ToString()])));
-        Binds.Add("Modules", Controls.AddButton($"Modules", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardModulesWindow>([ShipSymbol, WaypointSymbol, SystemSymbol])));
-        Binds.Add("Mounts", Controls.AddButton($"Mounts", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardMountsWindow>([ShipSymbol, WaypointSymbol, SystemSymbol])));
+        Binds.Add("Frame", Controls.AddButton($"Frame.Name", 2, y++, (_, _) => RootScreen.ShowWindow<FrameWindow, FrameContext>(new (CurrentData!.Frame.Symbol))));
+        Binds.Add("Reactor", Controls.AddButton($"Reactor.Name", 2, y++, (_, _) => RootScreen.ShowWindow<ReactorWindow, ReactorContext>(new (CurrentData!.Reactor.Symbol))));
+        Binds.Add("Engine", Controls.AddButton($"Engine.Name", 2, y++, (_, _) => RootScreen.ShowWindow<EngineWindow, EngineContext>(new (CurrentData!.Engine.Symbol))));
+        Binds.Add("Modules", Controls.AddButton($"Modules", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardModulesWindow, ShipyardShipContext>(Context)));
+        Binds.Add("Mounts", Controls.AddButton($"Mounts", 2, y++, (_, _) => RootScreen.ShowWindow<ShipyardMountsWindow, ShipyardShipContext>(Context)));
         Binds.Add("Crew", Controls.AddLabel($"Crew", 4, y));
     }
 }

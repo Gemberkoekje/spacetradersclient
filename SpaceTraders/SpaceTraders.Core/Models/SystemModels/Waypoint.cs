@@ -1,4 +1,5 @@
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 using System.Collections.Immutable;
 
 namespace SpaceTraders.Core.Models.SystemModels;
@@ -11,12 +12,12 @@ public sealed record Waypoint
     /// <summary>
     /// Gets the system symbol.
     /// </summary>
-    required public string SystemSymbol { get; init; }
+    required public SystemSymbol SystemSymbol { get; init; }
 
     /// <summary>
     /// Gets the waypoint symbol.
     /// </summary>
-    required public string Symbol { get; init; }
+    required public WaypointSymbol Symbol { get; init; }
 
     /// <summary>
     /// Gets the waypoint type.
@@ -36,12 +37,12 @@ public sealed record Waypoint
     /// <summary>
     /// Gets the orbital waypoint symbols.
     /// </summary>
-    required public ImmutableArray<string> Orbitals { get; init; }
+    required public ImmutableArray<WaypointSymbol> Orbitals { get; init; }
 
     /// <summary>
     /// Gets the symbol of the waypoint this orbits.
     /// </summary>
-    required public string Orbits { get; init; }
+    required public WaypointSymbol Orbits { get; init; }
 
     /// <summary>
     /// Gets the waypoint traits.

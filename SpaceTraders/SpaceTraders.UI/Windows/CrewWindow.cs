@@ -1,3 +1,4 @@
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class CrewWindow : DataBoundWindowWithSymbols<Crew>
+internal sealed class CrewWindow : DataBoundWindowWithContext<Crew, ShipContext>
 {
     private readonly ShipService _shipService;
 
@@ -25,11 +26,11 @@ internal sealed class CrewWindow : DataBoundWindowWithSymbols<Crew>
     }
 
     protected override Crew? FetchData() =>
-        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol)?.Crew;
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Context.Ship)?.Crew;
 
     protected override void BindData(Crew data)
     {
-        Title = $"Crew for ship {Symbol}";
+        Title = $"Crew for ship {Context.Ship}";
         Binds["Current"].SetData([$"{data.Current}"]);
         Binds["Capacity"].SetData([$"{data.Capacity}"]);
         Binds["Rotation"].SetData([$"{data.Rotation}"]);

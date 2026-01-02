@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class EngineWindow : DataBoundWindowWithSymbols<Engine>
+internal sealed class EngineWindow : DataBoundWindowWithContext<Engine, EngineContext>
 {
     private readonly ModuleService _moduleService;
 
@@ -21,8 +21,7 @@ internal sealed class EngineWindow : DataBoundWindowWithSymbols<Engine>
 
     protected override Engine? FetchData()
     {
-        if (string.IsNullOrEmpty(Symbol)) return null;
-        return _moduleService.GetEngines().GetValueOrDefault(Enum.Parse<EngineSymbol>(Symbol));
+        return _moduleService.GetEngines().GetValueOrDefault(Context.Engine);
     }
 
     protected override void BindData(Engine data)

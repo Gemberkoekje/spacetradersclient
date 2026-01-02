@@ -3,6 +3,7 @@ using Qowaiv.Validation.Abstractions;
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using System;
 using System.Collections.Generic;
@@ -64,7 +65,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
 
         foreach (var ship in Ships.Where(c => c.Navigation.Route.ArrivalTime < Clock.UtcNow().AddSeconds(-1)))
         {
-            var update = await service.EnqueueAsync((client, ct) => client.GetMyShipAsync(ship.Symbol, ct));
+            var update = await service.EnqueueAsync((client, ct) => client.GetMyShipAsync(ship.Symbol.ToString(), ct));
             var ships = Ships.Remove(ship).Add(MapShip(update.Value.Data));
             Update(ships);
         }
@@ -77,7 +78,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
     /// <param name="shipSymbol">The ship symbol.</param>
     /// <returns>A result indicating success or failure.</returns>
 #pragma warning disable CS1998 // Async method lacks 'await' operators - interface requirement
-    public async Task<Result> UpdateNav(Client.ShipNav navigation, string shipSymbol)
+    public async Task<Result> UpdateNav(Client.ShipNav navigation, ShipSymbol shipSymbol)
 #pragma warning restore CS1998
     {
         var ship = Ships.FirstOrDefault(s => s.Symbol == shipSymbol);
@@ -98,7 +99,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
     /// <param name="shipSymbol">The ship symbol.</param>
     /// <returns>A result indicating success or failure.</returns>
 #pragma warning disable CS1998 // Async method lacks 'await' operators - interface requirement
-    public async Task<Result> UpdateFuel(Client.ShipFuel fuel, string shipSymbol)
+    public async Task<Result> UpdateFuel(Client.ShipFuel fuel, ShipSymbol shipSymbol)
 #pragma warning restore CS1998
     {
         var ship = Ships.FirstOrDefault(s => s.Symbol == shipSymbol);
@@ -119,7 +120,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
     /// <param name="shipSymbol">The ship symbol.</param>
     /// <returns>A result indicating success or failure.</returns>
 #pragma warning disable CS1998 // Async method lacks 'await' operators - interface requirement
-    public async Task<Result> UpdateCargo(Client.ShipCargo cargo, string shipSymbol)
+    public async Task<Result> UpdateCargo(Client.ShipCargo cargo, ShipSymbol shipSymbol)
 #pragma warning restore CS1998
     {
         var ship = Ships.FirstOrDefault(s => s.Symbol == shipSymbol);
@@ -157,7 +158,7 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
     {
         return new Ship()
         {
-            Symbol = ship.Symbol,
+            Symbol = ShipSymbol.Parse(ship.Symbol),
             Registration = MapRegistration(ship.Registration),
             Navigation = MapNavigation(ship.Nav),
             Crew = Mapper.MapCrew(ship.Crew),
@@ -231,8 +232,8 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
     {
         return new ()
         {
-            SystemSymbol = navigation.SystemSymbol,
-            WaypointSymbol = navigation.WaypointSymbol,
+            SystemSymbol = SystemSymbol.Parse(navigation.SystemSymbol),
+            WaypointSymbol = WaypointSymbol.Parse(navigation.WaypointSymbol),
             Route = MapRoute(navigation.Route),
             Status = navigation.Status.Convert<Client.ShipNavStatus, ShipNavStatus>(),
             FlightMode = navigation.FlightMode.Convert<Client.ShipNavFlightMode, ShipNavFlightMode>(),
@@ -254,9 +255,9 @@ public sealed class ShipService(Client.SpaceTradersService service, ModuleServic
     {
         return new ()
         {
-            Symbol = waypoint.Symbol,
+            Symbol = WaypointSymbol.Parse(waypoint.Symbol),
             Type = waypoint.Type.Convert<Client.WaypointType, WaypointType>(),
-            SystemSymbol = waypoint.SystemSymbol,
+            SystemSymbol = SystemSymbol.Parse(waypoint.SystemSymbol),
             X = waypoint.X,
             Y = waypoint.Y,
         };

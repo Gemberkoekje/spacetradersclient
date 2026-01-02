@@ -1,5 +1,6 @@
 using SadConsole;
 using SadRogue.Primitives;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipyardModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
@@ -9,19 +10,19 @@ using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class TransactionsWindow : DataBoundWindowWithSymbols<Shipyard>
+internal sealed class TransactionsWindow : DataBoundWindowWithContext<Shipyard, WaypointContext>
 {
     private readonly ShipyardService _shipyardService;
-    private readonly string _agentSymbol;
+    private readonly AgentSymbol _agentSymbol;
     private CustomListBox<TransactionsListValue>? _transactionsListBox;
 
     public TransactionsWindow(RootScreen rootScreen, ShipyardService shipyardService, AgentService agentService)
         : base(rootScreen, 52, 20)
     {
         _shipyardService = shipyardService;
-        _agentSymbol = agentService.GetAgent()?.Symbol ?? string.Empty;
+        _agentSymbol = agentService.GetAgent()?.Symbol ?? AgentSymbol.Empty;
 
-        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Shipyard>>>(
+        SubscribeToEvent<ImmutableDictionary<SystemSymbol, ImmutableArray<Shipyard>>>(
             handler => shipyardService.Updated += handler,
             handler => shipyardService.Updated -= handler,
             OnServiceUpdatedSync);
@@ -31,8 +32,8 @@ internal sealed class TransactionsWindow : DataBoundWindowWithSymbols<Shipyard>
 
     protected override Shipyard? FetchData()
     {
-        var shipyards = _shipyardService.GetShipyards().GetValueOrDefault(ParentSymbol);
-        return shipyards.IsDefault ? null : shipyards.FirstOrDefault(s => s.Symbol == Symbol);
+        var shipyards = _shipyardService.GetShipyards().GetValueOrDefault(Context.System);
+        return shipyards.IsDefault ? null : shipyards.FirstOrDefault(s => s.Symbol == Context.Waypoint);
     }
 
     protected override void BindData(Shipyard data)
@@ -48,14 +49,14 @@ internal sealed class TransactionsWindow : DataBoundWindowWithSymbols<Shipyard>
         Binds.Add("Transactions", _transactionsListBox);
     }
 
-    private sealed class TransactionsListValue(Transaction transaction, string agentSymbol) : ColoredString(GetDisplayText(transaction), GetForegroundColor(transaction, agentSymbol), Color.Transparent)
+    private sealed class TransactionsListValue(Transaction transaction, AgentSymbol agentSymbol) : ColoredString(GetDisplayText(transaction), GetForegroundColor(transaction, agentSymbol), Color.Transparent)
     {
         private static string GetDisplayText(Transaction transaction)
         {
             return $"{transaction.Timestamp:u} - {transaction.WaypointSymbol} - {transaction.ShipType} - {transaction.Price} - {transaction.AgentSymbol}";
         }
 
-        private static Color GetForegroundColor(Transaction transaction, string agentSymbol)
+        private static Color GetForegroundColor(Transaction transaction, AgentSymbol agentSymbol)
         {
             if (transaction.AgentSymbol == agentSymbol)
                 return Color.Cyan;

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Qowaiv;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
@@ -108,7 +109,7 @@ public sealed class BackgroundDataUpdater(
         LastUpdatedDateTime = Clock.UtcNow();
     }
 
-    private async Task LoadDetailsForSystems(ImmutableDictionary<string, ImmutableArray<Waypoint>> waypoints)
+    private async Task LoadDetailsForSystems(ImmutableDictionary<SystemSymbol, ImmutableArray<Waypoint>> waypoints)
     {
         var waypointSymbols = waypoints
             .SelectMany(w => w.Value.Select(waypoint => (w.Key, waypoint.Symbol)));

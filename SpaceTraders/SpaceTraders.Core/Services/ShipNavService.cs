@@ -1,4 +1,5 @@
 using Qowaiv.Validation.Abstractions;
+using SpaceTraders.Core.IDs;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -28,7 +29,7 @@ public sealed class ShipNavService
     /// </summary>
     /// <param name="shipSymbol">The ship symbol.</param>
     /// <returns>A result indicating success or failure.</returns>
-    public async Task<Result> Dock(string shipSymbol)
+    public async Task<Result> Dock(ShipSymbol shipSymbol)
     {
         var ship = _shipService.GetShips().FirstOrDefault(s => s.Symbol == shipSymbol);
         if (ship == null)
@@ -41,7 +42,7 @@ public sealed class ShipNavService
             return Result.WithMessages(ValidationMessage.Error($"Ship cannot dock, currently {ship.Navigation.Status}"));
         }
 
-        var result = await _service.EnqueueAsync((client, ct) => client.DockShipAsync(ship.Symbol, ct), true);
+        var result = await _service.EnqueueAsync((client, ct) => client.DockShipAsync(ship.Symbol.ToString(), ct), true);
         if (!result.IsValid)
         {
             return result;
@@ -56,7 +57,7 @@ public sealed class ShipNavService
     /// <param name="shipSymbol">The ship symbol.</param>
     /// <param name="waypoint">The destination waypoint symbol.</param>
     /// <returns>A result indicating success or failure.</returns>
-    public async Task<Result> Navigate(string shipSymbol, string waypoint)
+    public async Task<Result> Navigate(ShipSymbol shipSymbol, WaypointSymbol waypoint)
     {
         var ship = _shipService.GetShips().FirstOrDefault(s => s.Symbol == shipSymbol);
         if (ship == null)
@@ -69,7 +70,7 @@ public sealed class ShipNavService
             return Result.WithMessages(ValidationMessage.Error($"Ship cannot navigate, currently {ship.Navigation.Status}"));
         }
 
-        var result = await _service.EnqueueAsync((client, ct) => client.NavigateShipAsync(new Client.Body6() { WaypointSymbol = waypoint }, ship.Symbol, ct), true);
+        var result = await _service.EnqueueAsync((client, ct) => client.NavigateShipAsync(new Client.Body6() { WaypointSymbol = waypoint.ToString() }, ship.Symbol.ToString(), ct), true);
         if (!result.IsValid)
         {
             return result;
@@ -89,7 +90,7 @@ public sealed class ShipNavService
     /// </summary>
     /// <param name="shipSymbol">The ship symbol.</param>
     /// <returns>A result indicating success or failure.</returns>
-    public async Task<Result> Orbit(string shipSymbol)
+    public async Task<Result> Orbit(ShipSymbol shipSymbol)
     {
         var ship = _shipService.GetShips().FirstOrDefault(s => s.Symbol == shipSymbol);
         if (ship == null)
@@ -102,7 +103,7 @@ public sealed class ShipNavService
             return Result.WithMessages(ValidationMessage.Error($"Ship cannot orbit, currently {ship.Navigation.Status}"));
         }
 
-        var result = await _service.EnqueueAsync((client, ct) => client.OrbitShipAsync(ship.Symbol, ct), true);
+        var result = await _service.EnqueueAsync((client, ct) => client.OrbitShipAsync(ship.Symbol.ToString(), ct), true);
         if (!result.IsValid)
         {
             return result;

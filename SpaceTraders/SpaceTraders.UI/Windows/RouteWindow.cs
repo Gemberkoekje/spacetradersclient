@@ -1,4 +1,5 @@
 using Qowaiv.Validation.Abstractions;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class RouteWindow : DataBoundWindowWithSymbols<Navigation>
+internal sealed class RouteWindow : DataBoundWindowWithContext<Navigation, ShipContext>
 {
     private readonly ShipService _shipService;
     private readonly ShipNavService _shipNavService;
@@ -35,11 +36,11 @@ internal sealed class RouteWindow : DataBoundWindowWithSymbols<Navigation>
     }
 
     protected override Navigation? FetchData() =>
-        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol)?.Navigation;
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Context.Ship)?.Navigation;
 
     protected override void BindData(Navigation data)
     {
-        Title = $"Navigation for ship {Symbol}";
+        Title = $"Navigation for ship {Context.Ship}";
 
         var waypointsForSystem = _waypointService.GetWaypoints().GetValueOrDefault(data.SystemSymbol);
         if (!waypointsForSystem.IsDefault)
@@ -96,7 +97,7 @@ internal sealed class RouteWindow : DataBoundWindowWithSymbols<Navigation>
 
     private async Task Dock()
     {
-        var result = await _shipNavService.Dock(Symbol);
+        var result = await _shipNavService.Dock(Context.Ship);
         if (result.IsValid)
         {
             RootScreen.ShowWarningWindow(Result.WithMessages(ValidationMessage.Info("Ship successfully docked")));
@@ -111,7 +112,7 @@ internal sealed class RouteWindow : DataBoundWindowWithSymbols<Navigation>
     {
         if (_waypointsListBox?.SelectedItem is not WaypointDistance selectedWaypoint)
             return;
-        var result = await _shipNavService.Navigate(Symbol, selectedWaypoint.Symbol);
+        var result = await _shipNavService.Navigate(Context.Ship, selectedWaypoint.Symbol);
         if (result.IsValid)
         {
             RootScreen.ShowWarningWindow(Result.WithMessages(ValidationMessage.Info("Ship successfully navigating")));
@@ -124,7 +125,7 @@ internal sealed class RouteWindow : DataBoundWindowWithSymbols<Navigation>
 
     private async Task Orbit()
     {
-        var result = await _shipNavService.Orbit(Symbol);
+        var result = await _shipNavService.Orbit(Context.Ship);
         if (result.IsValid)
         {
             RootScreen.ShowWarningWindow(Result.WithMessages(ValidationMessage.Info("Ship successfully orbited")));
@@ -146,7 +147,7 @@ internal sealed class RouteWindow : DataBoundWindowWithSymbols<Navigation>
         return Math.Sqrt(diffX * diffX + diffY * diffY);
     }
 
-    private sealed record WaypointDistance(string Symbol, double Distance)
+    private sealed record WaypointDistance(WaypointSymbol Symbol, double Distance)
     {
         public override string ToString() => $"{Symbol} - Distance: {Distance:F2}";
     }

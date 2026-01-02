@@ -1,3 +1,4 @@
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.CustomControls;
@@ -55,7 +56,7 @@ internal sealed class ShipsWindow : DataBoundWindowNoSymbols<ImmutableArray<Ship
     {
         if (_shipsListBox?.GetSelectedItem() is ShipListValue shipListValue)
         {
-            RootScreen.ShowWindow<ShipWindow>([shipListValue.Ship.Symbol]);
+            RootScreen.ShowWindow<ShipWindow, ShipContext>(new (shipListValue.Ship.Symbol));
         }
     }
 

@@ -1,3 +1,4 @@
+using SpaceTraders.Core.IDs;
 using System.Collections.Immutable;
 
 namespace SpaceTraders.Core.Models.MarketModels;
@@ -10,7 +11,7 @@ public sealed record Market
     /// <summary>
     /// Gets the market symbol.
     /// </summary>
-    required public string Symbol { get; init; }
+    required public WaypointSymbol Symbol { get; init; }
 
     /// <summary>
     /// Gets the goods exported by this market.

@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ReactorWindow : DataBoundWindowWithSymbols<Reactor>
+internal sealed class ReactorWindow : DataBoundWindowWithContext<Reactor, ReactorContext>
 {
     private readonly ModuleService _moduleService;
 
@@ -21,8 +21,7 @@ internal sealed class ReactorWindow : DataBoundWindowWithSymbols<Reactor>
 
     protected override Reactor? FetchData()
     {
-        if (string.IsNullOrEmpty(Symbol)) return null;
-        return _moduleService.GetReactors().GetValueOrDefault(Enum.Parse<ReactorSymbol>(Symbol));
+        return _moduleService.GetReactors().GetValueOrDefault(Context.Reactor);
     }
 
     protected override void BindData(Reactor data)

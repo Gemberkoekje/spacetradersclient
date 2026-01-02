@@ -1,5 +1,6 @@
 using Qowaiv;
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 using System;
 using System.Collections.Immutable;
 
@@ -17,7 +18,7 @@ public sealed record Ship
     /// <summary>
     /// Gets the unique ship symbol identifier.
     /// </summary>
-    required public string Symbol { get; init; }
+    required public ShipSymbol Symbol { get; init; }
 
     /// <summary>
     /// Gets the registration details (name, faction and role).

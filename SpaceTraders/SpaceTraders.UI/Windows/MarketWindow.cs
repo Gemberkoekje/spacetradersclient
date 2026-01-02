@@ -1,4 +1,5 @@
 using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.MarketModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
@@ -9,7 +10,7 @@ using System.Linq;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class MarketWindow : DataBoundWindowWithSymbols<Market>
+internal sealed class MarketWindow : DataBoundWindowWithContext<Market, WaypointContext>
 {
     private readonly MarketService _marketService;
 
@@ -18,7 +19,7 @@ internal sealed class MarketWindow : DataBoundWindowWithSymbols<Market>
     {
         _marketService = marketService;
 
-        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Market>>>(
+        SubscribeToEvent<ImmutableDictionary<SystemSymbol, ImmutableArray<Market>>>(
             handler => marketService.Updated += handler,
             handler => marketService.Updated -= handler,
             OnServiceUpdatedSync);
@@ -28,13 +29,13 @@ internal sealed class MarketWindow : DataBoundWindowWithSymbols<Market>
 
     protected override Market? FetchData()
     {
-        var markets = _marketService.GetMarkets().GetValueOrDefault(ParentSymbol);
-        return markets.IsDefault ? null : markets.FirstOrDefault(s => s.Symbol == Symbol);
+        var markets = _marketService.GetMarkets().GetValueOrDefault(Context.System);
+        return markets.IsDefault ? null : markets.FirstOrDefault(s => s.Symbol == Context.Waypoint);
     }
 
     protected override void BindData(Market data)
     {
-        Title = $"Market {Symbol} in {ParentSymbol}";
+        Title = $"Market {Context.Waypoint} in {Context.System}";
 
         BindMarketData("TradeGoodsExport", data.TradeGoods.Where(tg => tg.Type == MarketTradeGoodType.Export));
         BindMarketData("TradeGoodsImport", data.TradeGoods.Where(tg => tg.Type == MarketTradeGoodType.Import));

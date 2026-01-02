@@ -1,4 +1,8 @@
+using SpaceTraders.Core.Enums;
+using SpaceTraders.Core.IDs;
+using SpaceTraders.Core.Models.ContractModels;
 using SpaceTraders.Core.Models.ShipModels;
+using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
 using SpaceTraders.UI.Extensions;
 using System.Collections.Immutable;
@@ -7,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ShipWindow : DataBoundWindowWithSymbols<Ship>
+internal sealed class ShipWindow : DataBoundWindowWithContext<Ship, ShipContext>
 {
     private readonly ContractService _contractService;
     private readonly ShipService _shipService;
@@ -29,11 +33,11 @@ internal sealed class ShipWindow : DataBoundWindowWithSymbols<Ship>
     }
 
     protected override Ship? FetchData() =>
-        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Symbol);
+        _shipService.GetShips().FirstOrDefault(s => s.Symbol == Context.Ship);
 
     protected override void BindData(Ship data)
     {
-        Title = $"Ship {Symbol}";
+        Title = $"Ship {Context.Ship}";
         Binds["Symbol"].SetData([$"{data.Symbol}"]);
         Binds["Registration.Name"].SetData([$"{data.Registration.Name}"]);
         Binds["Registration.FactionSymbol"].SetData([$"{data.Registration.FactionSymbol}"]);
@@ -65,22 +69,22 @@ internal sealed class ShipWindow : DataBoundWindowWithSymbols<Ship>
         Binds.Add("Registration.Role", Controls.AddLabel($"Ship.Registration.Role", 14, y++));
         y++;
         Controls.AddLabel($"Navigation:", 2, y);
-        Binds.Add("Navigation.Status", Controls.AddButton($"Ship.Navigation.Status", 14, y++, (_, _) => RootScreen.ShowWindow<NavigationWindow>([Symbol])));
+        Binds.Add("Navigation.Status", Controls.AddButton($"Ship.Navigation.Status", 14, y++, (_, _) => RootScreen.ShowWindow<NavigationWindow, ShipContext>(Context)));
         Controls.AddLabel($"Waypoint:", 2, y);
-        Binds.Add("Navigation.WaypointSymbol", Controls.AddButton($"Ship.Navigation.WaypointSymbol", 14, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow>([CurrentData!.Navigation.WaypointSymbol, CurrentData.Navigation.SystemSymbol])));
+        Binds.Add("Navigation.WaypointSymbol", Controls.AddButton($"Ship.Navigation.WaypointSymbol", 14, y++, (_, _) => RootScreen.ShowWindow<WaypointWindow, WaypointContext>(new (CurrentData!.Navigation.WaypointSymbol, CurrentData.Navigation.SystemSymbol))));
         Controls.AddLabel($"Cargo:", 2, y);
-        Binds.Add("Cargo", Controls.AddButton($"Ship.Cargo", 14, y++, (_, _) => RootScreen.ShowWindow<CargoWindow>([Symbol])));
+        Binds.Add("Cargo", Controls.AddButton($"Ship.Cargo", 14, y++, (_, _) => RootScreen.ShowWindow<CargoWindow, ShipContext>(Context)));
         Controls.AddLabel($"Fuel:", 2, y);
         Binds.Add("Fuel", Controls.AddLabel($"Ship.Fuel", 14, y));
         Controls.AddButton($"Refuel", 25, y++, (_, _) => RootScreen.ScheduleCommand(Refuel));
         Binds.Add("Cooldown", Controls.AddLabel($"Ship.Cooldown", 2, y++));
         y++;
-        Binds.Add("Frame", Controls.AddButton($"Frame.Name", 2, y++, (_, _) => RootScreen.ShowWindow<FrameWindow>([CurrentData!.Frame.Symbol.ToString()])));
-        Binds.Add("Reactor", Controls.AddButton($"Reactor.Name", 2, y++, (_, _) => RootScreen.ShowWindow<ReactorWindow>([CurrentData!.Reactor.Symbol.ToString()])));
-        Binds.Add("Engine", Controls.AddButton($"Engine.Name", 2, y++, (_, _) => RootScreen.ShowWindow<EngineWindow>([CurrentData!.Engine.Symbol.ToString()])));
-        Binds.Add("Modules", Controls.AddButton($"Modules", 2, y++, (_, _) => RootScreen.ShowWindow<ModulesWindow>([Symbol])));
-        Binds.Add("Mounts", Controls.AddButton($"Mounts", 2, y++, (_, _) => RootScreen.ShowWindow<MountsWindow>([Symbol])));
-        Binds.Add("Crew", Controls.AddButton($"Crew", 2, y++, (_, _) => RootScreen.ShowWindow<CrewWindow>([Symbol])));
+        Binds.Add("Frame", Controls.AddButton($"Frame.Name", 2, y++, (_, _) => RootScreen.ShowWindow<FrameWindow, FrameContext>(new (CurrentData!.Frame.Symbol))));
+        Binds.Add("Reactor", Controls.AddButton($"Reactor.Name", 2, y++, (_, _) => RootScreen.ShowWindow<ReactorWindow, ReactorContext>(new (CurrentData!.Reactor.Symbol))));
+        Binds.Add("Engine", Controls.AddButton($"Engine.Name", 2, y++, (_, _) => RootScreen.ShowWindow<EngineWindow, EngineContext>(new (CurrentData!.Engine.Symbol))));
+        Binds.Add("Modules", Controls.AddButton($"Modules", 2, y++, (_, _) => RootScreen.ShowWindow<ModulesWindow, ShipContext>(Context)));
+        Binds.Add("Mounts", Controls.AddButton($"Mounts", 2, y++, (_, _) => RootScreen.ShowWindow<MountsWindow, ShipContext>(Context)));
+        Binds.Add("Crew", Controls.AddButton($"Crew", 2, y++, (_, _) => RootScreen.ShowWindow<CrewWindow, ShipContext>(Context)));
 
         y++;
         Controls.AddButton($"Negotiate new contract", 2, y, (_, _) => RootScreen.ScheduleCommand(NegotiateNewContract));
@@ -100,7 +104,7 @@ internal sealed class ShipWindow : DataBoundWindowWithSymbols<Ship>
         var result = await _contractService.NegotiateContract(CurrentData!.Symbol);
         if (result.IsValid)
         {
-            RootScreen.ShowWindow<ContractWindow>([]);
+            RootScreen.ShowWindow<ContractWindow, Contract>();
         }
         else
         {

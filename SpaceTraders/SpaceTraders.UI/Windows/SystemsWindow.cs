@@ -1,5 +1,6 @@
 using SadConsole;
 using SadRogue.Primitives;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
@@ -68,7 +69,7 @@ internal sealed class SystemsWindow : DataBoundWindowNoSymbols<ImmutableArray<Sy
     {
         if (_systemsListBox?.GetSelectedItem() is SystemListValue waypoint)
         {
-            RootScreen.ShowWindow<SystemDataWindow>([waypoint.System.Symbol]);
+            RootScreen.ShowWindow<SystemDataWindow, SystemContext>(new (waypoint.System.Symbol));
         }
     }
 

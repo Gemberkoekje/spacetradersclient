@@ -3,6 +3,7 @@ using Qowaiv.Validation.Abstractions;
 using SpaceTraders.Core.Enums;
 using SpaceTraders.Core.Extensions;
 using SpaceTraders.Core.Helpers;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ContractModels;
 using System;
 using System.Collections.Generic;
@@ -76,9 +77,9 @@ public sealed class ContractService(Client.SpaceTradersService service)
     /// </summary>
     /// <param name="shipSymbol">The ship symbol to use for negotiation.</param>
     /// <returns>A result containing the new contract.</returns>
-    public async Task<Result<Contract>> NegotiateContract(string shipSymbol)
+    public async Task<Result<Contract>> NegotiateContract(ShipSymbol shipSymbol)
     {
-        var result = await service.EnqueueAsync((client, ct) => client.NegotiateContractAsync(shipSymbol, ct), true);
+        var result = await service.EnqueueAsync((client, ct) => client.NegotiateContractAsync(shipSymbol.ToString(), ct), true);
         if (result.IsValid)
         {
             Update(Contracts.Add(MapContract(result.Value.Data.Contract)));
@@ -117,7 +118,7 @@ public sealed class ContractService(Client.SpaceTradersService service)
                 Deliver = contract.Terms.Deliver.Select(d => new ContractDeliverGood()
                 {
                     TradeSymbol = d.TradeSymbol,
-                    DestinationSymbol = d.DestinationSymbol,
+                    DestinationSymbol = WaypointSymbol.Parse(d.DestinationSymbol),
                     UnitsRequired = d.UnitsRequired,
                 }).ToImmutableHashSet(),
             },

@@ -1,5 +1,6 @@
 using SadConsole;
 using SadRogue.Primitives;
+using SpaceTraders.Core.IDs;
 using SpaceTraders.Core.Models.ShipModels;
 using SpaceTraders.Core.Models.SystemModels;
 using SpaceTraders.Core.Services;
@@ -12,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class SystemDataWindow : DataBoundWindowWithSymbols<SystemWaypoint>
+internal sealed class SystemDataWindow : DataBoundWindowWithContext<SystemWaypoint, SystemContext>
 {
     private readonly ShipService _shipService;
     private readonly SystemService _systemService;
@@ -37,7 +38,7 @@ internal sealed class SystemDataWindow : DataBoundWindowWithSymbols<SystemWaypoi
             handler => shipService.Updated -= handler,
             OnServiceUpdated);
 
-        SubscribeToEvent<ImmutableDictionary<string, ImmutableArray<Waypoint>>>(
+        SubscribeToEvent<ImmutableDictionary<SystemSymbol, ImmutableArray<Waypoint>>>(
             handler => waypointService.Updated += handler,
             handler => waypointService.Updated -= handler,
             OnWaypointsUpdated);
@@ -46,14 +47,14 @@ internal sealed class SystemDataWindow : DataBoundWindowWithSymbols<SystemWaypoi
     }
 
     protected override SystemWaypoint? FetchData() =>
-        _systemService.GetSystems().FirstOrDefault(d => d.Symbol == Symbol);
+        _systemService.GetSystems().FirstOrDefault(d => d.Symbol == Context.System);
 
     protected override void BindData(SystemWaypoint data)
     {
         Title = $"System {data.Name}";
 
         // Update waypoints and ships
-        var waypoints = _waypointService.GetWaypoints().GetValueOrDefault(Symbol);
+        var waypoints = _waypointService.GetWaypoints().GetValueOrDefault(Context.System);
         var ships = _shipService.GetShips().Where(d => d.Navigation.SystemSymbol == data.Symbol).ToImmutableArray();
 
         Binds["Symbol"].SetData([$"{data.Symbol}"]);
@@ -86,7 +87,7 @@ internal sealed class SystemDataWindow : DataBoundWindowWithSymbols<SystemWaypoi
         _waypointListBox?.SetCustomData([.. waypointdata]);
     }
 
-    private Task OnWaypointsUpdated(ImmutableDictionary<string, ImmutableArray<Waypoint>> _)
+    private Task OnWaypointsUpdated(ImmutableDictionary<SystemSymbol, ImmutableArray<Waypoint>> _)
     {
         RefreshData();
         return Task.CompletedTask;
@@ -111,7 +112,7 @@ internal sealed class SystemDataWindow : DataBoundWindowWithSymbols<SystemWaypoi
         Binds.Add("Waypoints", Controls.AddLabel($"System.Waypoints.Count", 21, y++));
         Controls.AddLabel($"Factions:", 2, y);
         Binds.Add("Factions", Controls.AddLabel($"System.Factions.Count", 21, y++));
-        Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow>([CurrentData!.Symbol]));
+        Controls.AddButton($"Show map", 2, y++, (_, _) => RootScreen.ShowWindow<SystemMapWindow, SystemContext>(Context));
         y++;
 
         Controls.AddLabel($"Markets & Shipyards:", 2, y++);
@@ -127,10 +128,10 @@ internal sealed class SystemDataWindow : DataBoundWindowWithSymbols<SystemWaypoi
         {
             if (waypoint.Ship is not null)
             {
-                RootScreen.ShowWindow<ShipWindow>([waypoint.Ship.Symbol]);
+                RootScreen.ShowWindow<ShipWindow, ShipContext>(new (waypoint.Ship.Symbol));
                 return;
             }
-            RootScreen.ShowWindow<WaypointWindow>([waypoint.Waypoint.Symbol, waypoint.Waypoint.SystemSymbol]);
+            RootScreen.ShowWindow<WaypointWindow, WaypointContext>(new (waypoint.Waypoint.Symbol, waypoint.Waypoint.SystemSymbol));
         }
     }
 
@@ -147,7 +148,7 @@ internal sealed class SystemDataWindow : DataBoundWindowWithSymbols<SystemWaypoi
             {
                 indent += 1;
             }
-            if (!string.IsNullOrEmpty(wp.Orbits))
+            if (wp.Orbits != WaypointSymbol.Empty)
             {
                 indent += 1;
             }

@@ -137,17 +137,28 @@ public sealed class RootScreen : ScreenObject, IDisposable
         }
     }
 
-    internal void ShowWindow<TWindow>(string[] symbols) where TWindow : Window
+    internal void ShowWindow<TWindow, TData>() where TWindow : DataBoundWindow<TData>
     {
         var window = ServiceProvider.GetService<TWindow>();
         if (window == null)
         {
             return;
         }
-        if (window is ICanSetSymbols dataWindow)
+        _mainSurface.Children.Add(window);
+        Windows.Add(window);
+        window.Show();
+    }
+
+    internal void ShowWindow<TWindow, TContext>(TContext context)
+        where TWindow : Window, IDataBoundWindowWithContext<TContext>
+        where TContext : ISymbolContext
+    {
+        var window = ServiceProvider.GetService<TWindow>();
+        if (window == null)
         {
-            dataWindow.SetSymbol(symbols);
+            return;
         }
+        window.SetContext(context);
         _mainSurface.Children.Add(window);
         Windows.Add(window);
         window.Show();

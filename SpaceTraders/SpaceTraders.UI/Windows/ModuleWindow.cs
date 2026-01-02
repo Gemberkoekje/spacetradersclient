@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 
 namespace SpaceTraders.UI.Windows;
 
-internal sealed class ModuleWindow : DataBoundWindowWithSymbols<Module>
+internal sealed class ModuleWindow : DataBoundWindowWithContext<Module, ModuleContext>
 {
     private readonly ModuleService _moduleService;
 
@@ -21,8 +21,7 @@ internal sealed class ModuleWindow : DataBoundWindowWithSymbols<Module>
 
     protected override Module? FetchData()
     {
-        if (string.IsNullOrEmpty(Symbol)) return null;
-        return _moduleService.GetModules().GetValueOrDefault(Enum.Parse<ModuleSymbol>(Symbol));
+        return _moduleService.GetModules().GetValueOrDefault(Context.Module);
     }
 
     protected override void BindData(Module data)

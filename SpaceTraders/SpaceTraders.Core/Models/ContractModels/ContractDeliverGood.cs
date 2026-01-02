@@ -1,3 +1,5 @@
+using SpaceTraders.Core.IDs;
+
 namespace SpaceTraders.Core.Models.ContractModels;
 
 /// <summary>
@@ -13,7 +15,7 @@ public sealed record ContractDeliverGood
     /// <summary>
     /// Gets the destination waypoint symbol.
     /// </summary>
-    required public string DestinationSymbol { get; init; }
+    required public WaypointSymbol DestinationSymbol { get; init; }
 
     /// <summary>
     /// Gets the number of units required.
